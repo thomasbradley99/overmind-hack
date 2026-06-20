@@ -107,11 +107,11 @@ def extract_clip_frames(clip_path: str, num_frames: int = 3, max_size: int = 336
     return frames
 
 
-def _ollama_chat(payload: dict) -> str:
+def _ollama_chat(payload: dict, timeout: int = 600) -> str:
     url = f"{OLLAMA_HOST}/api/chat"
     payload.setdefault("stream", False)
     try:
-        resp = requests.post(url, json=payload, timeout=120)
+        resp = requests.post(url, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
         return data.get("message", {}).get("content", "")
