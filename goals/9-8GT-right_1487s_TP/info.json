@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 1487,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Keeper saves low shot with legs then blocks point-blank rebound with chest",
+  "clip_start": 1477.0,
+  "clip_duration": 20.0
+}

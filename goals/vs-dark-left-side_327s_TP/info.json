@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 327.4,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark sportswear",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Player slots the ball low into the net after receiving a pass in front of goal",
+  "clip_start": 317.4,
+  "clip_duration": 20.0
+}

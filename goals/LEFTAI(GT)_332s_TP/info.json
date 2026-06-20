@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 332.5,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "An audacious shot from near the halfway line flies into the net, putting the suits ahead.",
+  "clip_start": 322.5,
+  "clip_duration": 20.0
+}

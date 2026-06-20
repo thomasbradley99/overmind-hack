@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 461,
+  "goal_time_in_clip": 10.0,
+  "team": "Black suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A bizarre goal straight from the restart, as a long shot deflects off a player on the ground and goes in.",
+  "clip_start": 451.0,
+  "clip_duration": 20.0
+}

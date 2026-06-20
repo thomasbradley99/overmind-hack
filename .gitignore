@@ -1,0 +1,16 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+
+# Pipeline run outputs (regenerated each run)
+games/**/runs/
+runs/
+outputs/
+
+# OS
+.DS_Store

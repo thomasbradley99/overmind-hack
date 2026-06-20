@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 282,
+  "goal_time_in_clip": 10.0,
+  "team": "Black suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A shot from the right side beats the diving goalkeeper.",
+  "clip_start": 272.0,
+  "clip_duration": 20.0
+}

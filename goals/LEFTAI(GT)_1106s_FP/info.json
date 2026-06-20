@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 1106,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "After a keeper save, a Black defender, while falling, accidentally directs the rebound into his own net for a third own goal.",
+  "clip_start": 1096.0,
+  "clip_duration": 20.0
+}

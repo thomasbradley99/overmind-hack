@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 286,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A pass is played across the front of the goal, and a Red player finishes. The keeper gets a hand to it, but can't keep it out.",
+  "clip_start": 276.0,
+  "clip_duration": 20.0
+}

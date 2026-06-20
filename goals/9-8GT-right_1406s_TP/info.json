@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 1406,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Low finish into the bottom corner from the right side of the box",
+  "clip_start": 1396.0,
+  "clip_duration": 20.0
+}

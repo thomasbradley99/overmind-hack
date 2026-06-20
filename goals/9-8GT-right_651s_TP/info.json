@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 651,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark sportswear",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "shitty goal",
+  "clip_start": 641.0,
+  "clip_duration": 20.0
+}

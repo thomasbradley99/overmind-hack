@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 1646,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Low shot from the left goes narrowly wide of the far post",
+  "clip_start": 1636.0,
+  "clip_duration": 20.0
+}
