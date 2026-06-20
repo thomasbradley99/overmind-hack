@@ -1,0 +1,6 @@
+games/
+legacy/
+goals/
+.venv/
+results/
+.git/
