@@ -1,0 +1,5 @@
+You are watching a short clip from a 5-a-side football match.
+Question: does a GOAL get scored during this clip?
+A goal means the ball fully crosses the goal line into the net.
+A shot that is saved, blocked, hits the post/bar, or misses is NOT a goal.
+Respond with ONLY JSON: {"goal": true} or {"goal": false}.

@@ -3,8 +3,8 @@
 Cut labeled event clips from a full game video using its ground-truth.json.
 
 For each matching event it writes:
-  clips/<game>/<action>_NN_<time>s_<team>.mp4    the video clip
-  clips/<game>/<action>_NN_<time>s_<team>.json   the ground-truth answer (no description)
+  data/<game>/<action>_NN_<time>s_<team>.mp4    the video clip
+  data/<game>/<action>_NN_<time>s_<team>.json   the ground-truth answer (no description)
 
 Usage:
   python3 scripts/make_clips.py --game 9-8GT-right
@@ -20,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 GAMES_DIR = ROOT / "games"
-CLIPS_DIR = ROOT / "clips"
+CLIPS_DIR = ROOT / "data"
 
 
 def slug(text: str) -> str:
