@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 915,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "Following a save by the Black keeper on his own teammate, a Red player pounces on the bizarre rebound and scores.",
+  "clip_start": 905.0,
+  "clip_duration": 20.0
+}

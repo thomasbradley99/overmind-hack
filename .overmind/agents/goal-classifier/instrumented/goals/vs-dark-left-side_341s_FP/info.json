@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 341,
+  "goal_time_in_clip": 10.0,
+  "team": "Black suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "Another goal from the right side, this time finding the bottom left corner.",
+  "clip_start": 331.0,
+  "clip_duration": 20.0
+}

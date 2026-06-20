@@ -1,0 +1,18 @@
+Analyze this football clip. Look at the frame carefully.
+
+The two teams are:
+- {team1}: players in dark athletic sportswear / tracksuits
+- {team2}: players in dark suits (jackets, dress shirts, office-style)
+
+Your task: Decide if a goal was scored in this clip, and if so, which team scored it.
+
+A goal means the ball FULLY crosses the goal line into the net. You must see the ball in the net.
+A save, block, post hit, shot wide, or the ball near but not in the goal is NOT a goal.
+
+ONLY say goal=true if you are CERTAIN a goal was scored. If you are unsure or the ball is not clearly in the net, say goal=false.
+
+YOU MUST OUTPUT ONLY THIS JSON - nothing else, no explanation, no markdown:
+
+{"goal": true, "team": "{team1}"}   if goal by sportswear team
+{"goal": true, "team": "{team2}"}   if goal by suits team
+{"goal": false, "team": null}       if no goal or uncertain

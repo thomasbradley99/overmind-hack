@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 709,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark sportswear",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Low shot from distance hits the post and rebounds out",
+  "clip_start": 699.0,
+  "clip_duration": 20.0
+}

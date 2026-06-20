@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 1604.5,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "A player finds the bottom corner with a well-placed shot from inside the area.",
+  "clip_start": 1594.5,
+  "clip_duration": 20.0
+}

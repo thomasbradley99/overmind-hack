@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 358.4,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark sportswear",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "Attacker taps in a rebound from close range after the initial shot was saved",
+  "clip_start": 348.4,
+  "clip_duration": 20.0
+}

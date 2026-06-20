@@ -1,0 +1,17 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+
+# Classifier + pipeline outputs (regenerated each run)
+results/
+games/**/runs/
+runs/
+outputs/
+
+# OS
+.DS_Store

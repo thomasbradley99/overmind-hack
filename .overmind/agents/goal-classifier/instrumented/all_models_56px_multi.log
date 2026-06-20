@@ -1,0 +1,200 @@
+Dataset: 9-8GT-right-quarter
+Clips: 9
+Strategy: 56px images, 2fps multi-frame, 12s clips
+Started: 2026-06-20 16:29:49
+
+######################################################################
+# MODELS: 3
+######################################################################
+
+
+======================================================================
+RUNNING: richardyoung/smolvlm2-2.2b-instruct:latest (key=smolvlm2_56px_multi)
+======================================================================
+[1/9] goal_01_283s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> goal, team=Dark suits, frames=23, latency=3.0s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> goal, team=Dark suits, frames=23, latency=0.7s
+  -> raw: {
+  "goal": true,
+  "team": "Dark suits"
+}
+
+The Dark suits scored a goal. The ball crossed the goal line into the net.
+
+======================================================================
+richardyoung/smolvlm2-2.2b-instruct:latest — 56px 2fps — FINAL
+======================================================================
+Confusion Matrix  (9 clips)
+                Pred goal  Pred not-goal
+  Truth goal           5             0    
+  Truth not-goal       4             0    
+----------------------------------------------------------------------
+  Precision:  55.6%
+  Recall:     100.0%
+  F1:         71.4%
+  Accuracy:   55.6%
+  Team Acc:   60.0% (3/5)
+  Avg Latency: 1.0s
+  Avg Frames: 23.0
+
+
+======================================================================
+RUNNING: qwen3-vl:8b (key=qwen3vl8b_56px_multi)
+======================================================================
+[1/9] goal_01_283s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, frames=23, latency=35.6s
+  -> raw: 
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=29.5s
+  -> raw: 
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=30.6s
+  -> raw: 
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=30.0s
+  -> raw: 
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, frames=23, latency=30.0s
+  -> raw: 
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=30.6s
+  -> raw: 
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=30.3s
+  -> raw: 
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=30.2s
+  -> raw: 
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=31.0s
+  -> raw: 
+
+======================================================================
+qwen3-vl:8b — 56px 2fps — FINAL
+======================================================================
+Confusion Matrix  (9 clips)
+                Pred goal  Pred not-goal
+  Truth goal           0             5    
+  Truth not-goal       0             4    
+----------------------------------------------------------------------
+  Precision:  0.0%
+  Recall:     0.0%
+  F1:         0.0%
+  Accuracy:   44.4%
+  Team Acc:   0.0% (0/0)
+  Avg Latency: 30.9s
+  Avg Frames: 23.0
+
+
+======================================================================
+RUNNING: qwen3-vl:2b (key=qwen3vl2b_56px_multi)
+======================================================================
+[1/9] goal_01_283s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, frames=23, latency=11.7s
+  -> raw: 
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=7.6s
+  -> raw: 
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=7.6s
+  -> raw: 
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, frames=23, latency=7.8s
+  -> raw: 
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, frames=23, latency=7.7s
+  -> raw: 
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=7.6s
+  -> raw: 
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=7.7s
+  -> raw: 
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=7.6s
+  -> raw: 
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, frames=23, latency=7.6s
+  -> raw: 
+
+======================================================================
+qwen3-vl:2b — 56px 2fps — FINAL
+======================================================================
+Confusion Matrix  (9 clips)
+                Pred goal  Pred not-goal
+  Truth goal           0             5    
+  Truth not-goal       0             4    
+----------------------------------------------------------------------
+  Precision:  0.0%
+  Recall:     0.0%
+  F1:         0.0%
+  Accuracy:   44.4%
+  Team Acc:   0.0% (0/0)
+  Avg Latency: 8.1s
+  Avg Frames: 23.0
+
+
+Finished all models: 2026-06-20 16:37:16

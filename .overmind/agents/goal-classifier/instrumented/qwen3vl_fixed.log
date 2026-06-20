@@ -1,0 +1,101 @@
+Dataset: 9-8GT-right-quarter
+Clips: 9
+Strategy: 56px single frame, num_predict=500
+Started: 2026-06-20 16:46:14
+
+
+======================================================================
+RUNNING: qwen3-vl:2b (key=qwen3vl2b_56px_fixed)
+======================================================================
+[1/9] goal_01_283s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, latency=4.0s
+  -> raw: {"goal": false, "team": null}
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=10.5s
+  -> raw: 
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=10.4s
+  -> raw: {"goal": false, "team": null}
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=3.1s
+  -> raw: {"goal": false, "team": null}
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, latency=3.2s
+  -> raw: {"goal": false, "team": null}
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=6.0s
+  -> raw: {"goal": false, "team": null}
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=11.2s
+  -> raw: 
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=3.3s
+  -> raw: {"goal": false, "team": null}
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=3.0s
+  -> raw: {"goal": false, "team": null}
+
+======================================================================
+qwen3-vl:2b — 56px FIXED — FINAL
+======================================================================
+Confusion Matrix  (9 clips)
+                Pred goal  Pred not-goal
+  Truth goal           0             5    
+  Truth not-goal       0             4    
+----------------------------------------------------------------------
+  Precision:  0.0%
+  Recall:     0.0%
+  F1:         0.0%
+  Accuracy:   44.4%
+  Team Acc:   0.0% (0/0)
+  Avg Latency: 6.1s
+
+
+======================================================================
+RUNNING: qwen3-vl:8b (key=qwen3vl8b_56px_fixed)
+======================================================================
+[1/9] goal_01_283s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, latency=18.2s
+  -> raw: {"goal": false, "team": null}
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=9.7s
+  -> raw: {"goal": false, "team": null}
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=13.5s
+  -> raw: {"goal": false, "team": null}
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=11.1s
+  -> raw: {"goal": false, "team": null}
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, latency=11.8s
+  -> raw: {"goal": false, "team": null}
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=9.4s
+  -> raw: {"goal": false, "team": null}
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=11.9s
+  -> raw: {"goal": false, "team": null}
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=12.3s
+  -> raw: {"goal": false, "team": null}
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=17.5s
+  -> raw: {"goal": false, "team": null}
+
+======================================================================
+qwen3-vl:8b — 56px FIXED — FINAL
+======================================================================
+Confusion Matrix  (9 clips)
+                Pred goal  Pred not-goal
+  Truth goal           0             5    
+  Truth not-goal       0             4    
+----------------------------------------------------------------------
+  Precision:  0.0%
+  Recall:     0.0%
+  F1:         0.0%
+  Accuracy:   44.4%
+  Team Acc:   0.0% (0/0)
+  Avg Latency: 12.8s
+
+
+Finished all models: 2026-06-20 16:49:08

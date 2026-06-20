@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 555,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "The comeback begins! A shot from the left hits the inside of the far post and goes in.",
+  "clip_start": 545.0,
+  "clip_duration": 20.0
+}

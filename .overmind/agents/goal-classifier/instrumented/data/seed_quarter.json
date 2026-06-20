@@ -1,0 +1,92 @@
+[
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/goal_01_283s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/goal_05_606s_Dark-suits.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/goal_09_947s_Dark-suits.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/goal_13_1646s_Dark-suits.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/goal_17_2129s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/nongoal_04_189s.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/nongoal_08_1198s.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/nongoal_12_1557s.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right-quarter/nongoal_16_1986s.mp4",
+      "dataset": "9-8GT-right-quarter"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  }
+]

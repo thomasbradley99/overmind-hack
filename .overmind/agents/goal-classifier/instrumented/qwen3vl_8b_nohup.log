@@ -1,0 +1,159 @@
+Dataset: 9-8GT-right-quarter
+Model: qwen3-vl:8b
+Clips: 9
+Strategy: 112px images, reduced context (512), 1hr timeout per clip
+Started at: 2026-06-20 16:20:26
+[1/9] SKIP goal_01_283s_Dark-sportswear.mp4 (already done, lat=49.8s)
+[2/9] goal_05_606s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=14.3s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 2 clips (2 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             1    
+  Truth not-goal     0             0    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    50.0%
+  F1:        66.7%
+  Accuracy:  50.0%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 32.0s
+[3/9] goal_09_947s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=6.4s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 3 clips (3 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             2    
+  Truth not-goal     0             0    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    33.3%
+  F1:        50.0%
+  Accuracy:  33.3%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 23.5s
+[4/9] goal_13_1646s_Dark-suits.mp4 (truth: goal, team: Dark suits)
+  -> not_goal, team=None, latency=6.5s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 4 clips (4 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             3    
+  Truth not-goal     0             0    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    25.0%
+  F1:        40.0%
+  Accuracy:  25.0%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 19.2s
+[5/9] goal_17_2129s_Dark-sportswear.mp4 (truth: goal, team: Dark sportswear)
+  -> not_goal, team=None, latency=7.1s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 5 clips (5 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             0    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  20.0%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 16.8s
+[6/9] nongoal_04_189s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=6.7s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 6 clips (6 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             1    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  33.3%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 15.1s
+[7/9] nongoal_08_1198s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=6.9s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 7 clips (7 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             2    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  42.9%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 13.9s
+[8/9] nongoal_12_1557s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=6.6s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 8 clips (8 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             3    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  50.0%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 13.0s
+[9/9] nongoal_16_1986s.mp4 (truth: not_goal, team: None)
+  -> not_goal, team=None, latency=6.8s
+
+============================================================
+qwen3-vl:8b — INCREMENTAL after 9 clips (9 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             4    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  55.6%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 12.3s
+
+Finished at: 2026-06-20 16:21:29
+
+============================================================
+qwen3-vl:8b — FINAL (9 clips)
+============================================================
+Confusion Matrix
+              Pred goal  Pred not-goal
+  Truth goal         1             4    
+  Truth not-goal     0             4    
+------------------------------------------------------------
+  Precision: 100.0%
+  Recall:    20.0%
+  F1:        33.3%
+  Accuracy:  55.6%
+  Team Acc:  0.0% (0/1)
+  Avg Latency: 12.3s

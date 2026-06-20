@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 185,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A shot from outside the penalty area takes a big deflection off a Black defender and finds the back of the net.",
+  "clip_start": 175.0,
+  "clip_duration": 20.0
+}

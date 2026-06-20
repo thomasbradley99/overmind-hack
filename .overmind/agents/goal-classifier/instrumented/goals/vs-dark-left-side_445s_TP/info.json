@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 445.4,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": true,
+  "type": "TP",
+  "description": "lovely assist and better finish",
+  "clip_start": 435.4,
+  "clip_duration": 20.0
+}

@@ -1,0 +1,5 @@
+#  Overmind agent registry — use: overmind agent register / list / remove / update 
+
+agents = [
+    {name = "goal-classifier", entrypoint = "agent:run"},
+]

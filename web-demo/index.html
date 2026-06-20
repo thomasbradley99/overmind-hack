@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Goal Detection - Model Evaluation Dashboard</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+  --text: #f8fafc; --text2: #94a3b8; --accent: #38bdf8; --accent2: #818cf8;
+  --goal: #22c55e; --not-goal: #ef4444; --warning: #f59e0b; --muted: #64748b;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+header{background:linear-gradient(135deg,var(--surface),var(--surface2));padding:1.5rem 2rem;border-bottom:1px solid var(--surface2)}
+header h1{margin:0;font-size:1.5rem;display:flex;align-items:center;gap:0.75rem}
+header .subtitle{color:var(--text2);margin-top:0.25rem;font-size:0.9rem}
+.badge{display:inline-block;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.75rem;font-weight:600;background:var(--accent);color:var(--bg)}
+.badge.goal{background:var(--goal)}
+.badge.not-goal{background:var(--not-goal)}
+.badge.warning{background:var(--warning);color:#000}
+.container{max-width:1400px;margin:0 auto;padding:1.5rem 2rem}
+.grid{display:grid;gap:1.5rem}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-4{grid-template-columns:1fr 1fr 1fr 1fr}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+.card{background:var(--surface);border-radius:0.75rem;padding:1.25rem;border:1px solid var(--surface2)}
+.card h2{margin:0 0 1rem 0;font-size:1.1rem;color:var(--accent)}
+.card h3{margin:0 0 0.75rem 0;font-size:0.95rem;color:var(--text2)}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1rem}
+.metric{text-align:center;padding:1rem;background:var(--bg);border-radius:0.5rem}
+.metric .value{font-size:1.75rem;font-weight:700}
+.metric .label{font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-top:0.25rem}
+.metric.goal .value{color:var(--goal)}
+.metric.not-goal .value{color:var(--not-goal)}
+.metric.warning .value{color:var(--warning)}
+.metric.accent .value{color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th{text-align:left;padding:0.75rem;background:var(--bg);color:var(--accent);font-weight:600;border-bottom:2px solid var(--surface2)}
+td{padding:0.75rem;border-bottom:1px solid var(--surface2)}
+tr:hover{background:rgba(56,189,248,0.05)}
+tr.best{background:rgba(34,197,94,0.1)}
+tr.worst{background:rgba(239,68,68,0.1)}
+.correct{color:var(--goal);font-weight:600}
+.incorrect{color:var(--not-goal);font-weight:600}
+.model-tag{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.75rem;font-weight:600;background:var(--surface2)}
+.clip-selector{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem}
+.clip-btn{padding:0.5rem 1rem;border:1px solid var(--surface2);background:var(--surface);color:var(--text);border-radius:0.5rem;cursor:pointer;font-size:0.8rem;transition:all 0.2s}
+.clip-btn:hover{border-color:var(--accent)}
+.clip-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.clip-btn.goal-clip{border-left:3px solid var(--goal)}
+.clip-btn.not-goal-clip{border-left:3px solid var(--not-goal)}
+.chart-container{height:300px;position:relative}
+.bar-chart{display:flex;align-items:flex-end;gap:0.5rem;height:200px;padding:1rem 0;border-bottom:2px solid var(--surface2)}
+.bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:0.5rem}
+.bar{width:100%;border-radius:4px 4px 0 0;transition:height 0.5s ease;position:relative}
+.bar-label{font-size:0.65rem;color:var(--text2);text-align:center;transform:rotate(-45deg);transform-origin:center;white-space:nowrap}
+.bar-value{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:0.65rem;font-weight:600}
+.f1-bar{background:var(--accent)}
+.acc-bar{background:var(--accent2)}
+.prec-bar{background:var(--goal)}
+.rec-bar{background:var(--warning)}
+.confusion{display:grid;grid-template-columns:auto 1fr 1fr;gap:0.5rem;font-size:0.85rem}
+.confusion-header{font-weight:600;color:var(--accent);padding:0.5rem}
+.confusion-cell{padding:0.5rem;background:var(--bg);border-radius:4px;text-align:center}
+.confusion-cell.tp{background:rgba(34,197,94,0.2);color:var(--goal);font-weight:700}
+.confusion-cell.tn{background:rgba(56,189,248,0.2);color:var(--accent);font-weight:700}
+.confusion-cell.fp{background:rgba(239,68,68,0.2);color:var(--not-goal);font-weight:700}
+.confusion-cell.fn{background:rgba(245,158,11,0.2);color:var(--warning);font-weight:700}
+.recommendation{background:var(--bg);padding:1rem;border-radius:0.5rem;border-left:4px solid var(--accent)}
+.recommendation.goal-best{border-left-color:var(--goal)}
+.recommendation.team-best{border-left-color:var(--accent2)}
+.recommendation.overmind{border-left-color:var(--warning)}
+.overmind-section{background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.05));border:1px solid rgba(245,158,11,0.3)}
+.hidden{display:none}
+.btn{padding:0.75rem 1.5rem;background:var(--accent);color:var(--bg);border:none;border-radius:0.5rem;font-weight:600;cursor:pointer;font-size:0.9rem;transition:all 0.2s}
+.btn:hover{background:var(--accent2)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.spinner{display:inline-block;width:1rem;height:1rem;border:2px solid var(--bg);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin-left:0.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.raw-output{background:var(--bg);padding:1rem;border-radius:0.5rem;font-family:monospace;font-size:0.75rem;color:var(--text2);max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+.status-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:0.5rem}
+.status-indicator.success{background:var(--goal)}
+.status-indicator.error{background:var(--not-goal)}
+.status-indicator.pending{background:var(--warning)}
+.comparison-highlight{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.highlight-box{padding:1rem;border-radius:0.5rem;text-align:center}
+.highlight-box.winner{background:rgba(34,197,94,0.15);border:1px solid var(--goal)}
+.highlight-box.loser{background:rgba(239,68,68,0.15);border:1px solid var(--not-goal)}
+.highlight-box.neutral{background:var(--bg);border:1px solid var(--surface2)}
+.highlight-box .title{font-size:0.8rem;color:var(--text2);text-transform:uppercase;margin-bottom:0.5rem}
+.highlight-box .value{font-size:1.5rem;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>Football Goal Detection - Model Evaluation Dashboard</h1>
+  <div class="subtitle">Dataset: 9-8GT-right-quarter (9 clips: 5 goals + 4 non-goals) | Goal detection + team identification</div>
+</header>
+
+<div class="container">
+
+<div class="grid grid-4" style="margin-bottom:1.5rem">
+  <div class="card">
+    <div class="metric-grid">
+      <div class="metric goal"><div class="value" id="total-goals">5</div><div class="label">Goal Clips</div></div>
+      <div class="metric not-goal"><div class="value" id="total-non-goals">4</div><div class="label">Non-Goal</div></div>
+      <div class="metric accent"><div class="value" id="total-models">11</div><div class="label">Model Configs</div></div>
+      <div class="metric warning"><div class="value" id="total-families">3</div><div class="label">Model Families</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:1.5rem">
+  <div class="card recommendation goal-best">
+    <h3>Best for Goal Detection</h3>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--goal)">smolvlm2-2.2b</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-top:0.25rem">100% recall, catches every goal</div>
+    <div style="margin-top:0.75rem"><span class="badge">F1: 71.4%</span> <span class="badge goal">Rec: 100%</span></div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted)">Always predicts "goal" — high false positives on non-goals</div>
+  </div>
+  <div class="card recommendation team-best">
+    <h3>Best for Team ID</h3>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--accent2)">moondream:1.8b</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-top:0.25rem">100% team accuracy when goal detected</div>
+    <div style="margin-top:0.75rem"><span class="badge">Team: 100%</span> <span class="badge">Prec: 100%</span></div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted)">Only 20% recall — misses 4/5 goals</div>
+  </div>
+  <div class="card recommendation overmind">
+    <h3>Overmind Potential</h3>
+    <div style="font-size:1.1rem;font-weight:700;color:var(--warning)">qwen3-vl:8b</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-top:0.25rem">Best balanced local model</div>
+    <div style="margin-top:0.75rem"><span class="badge">F1: 33.3%</span> <span class="badge">Prec: 100%</span></div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--muted)">Overmind prompt tuning could boost recall</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>Model Ranking by F1 Score</h2>
+  <div style="overflow-x:auto">
+    <table id="model-ranking-table">
+      <thead><tr><th>Rank</th><th>Model</th><th>Config</th><th>Size</th><th>F1</th><th>Acc</th><th>Prec</th><th>Rec</th><th>Team</th><th>Latency</th></tr></thead>
+      <tbody id="model-ranking-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>Per-Clip Results Explorer</h2>
+  <div class="subtitle" style="margin-bottom:1rem">Select a clip to see model predictions</div>
+  <div class="clip-selector" id="clip-selector"></div>
+  <div id="clip-details" style="display:none">
+    <div class="grid grid-2">
+      <div>
+        <div style="margin-bottom:1rem"><span class="badge" id="selected-truth"></span> <span id="selected-team" style="margin-left:0.5rem;color:var(--text2)"></span></div>
+        <table><thead><tr><th>Model</th><th>Config</th><th>Pred</th><th>Team</th><th>Goal</th><th>Team</th></tr></thead><tbody id="per-clip-table"></tbody></table>
+      </div>
+      <div><h3>Model Response</h3><div class="raw-output" id="raw-output">Select a clip and model</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom:1.5rem">
+  <div class="card"><h2>Goal Detection Performance</h2><div class="chart-container"><div class="bar-chart" id="goal-chart"></div></div><div style="margin-top:1rem;font-size:0.8rem;color:var(--text2)"><span style="color:var(--accent)">■</span> F1 <span style="color:var(--goal);margin-left:1rem">■</span> Precision <span style="color:var(--warning);margin-left:1rem">■</span> Recall</div></div>
+  <div class="card"><h2>Team Identification Accuracy</h2><div class="chart-container"><div class="bar-chart" id="team-chart"></div></div><div style="margin-top:1rem;font-size:0.8rem;color:var(--text2)"><span style="color:var(--accent2)">■</span> Team Accuracy (on detected goals)</div></div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>Confusion Matrices</h2>
+  <div class="grid grid-3" id="confusion-matrices"></div>
+</div>
+
+<div class="card overmind-section" style="margin-bottom:1.5rem">
+  <h2>Overmind Optimization Framework</h2>
+  <div class="subtitle" style="margin-bottom:1rem">How Overmind could improve these models</div>
+  <div class="grid grid-2">
+    <div>
+      <h3>Current vs Optimized</h3>
+      <div class="comparison-highlight">
+        <div class="highlight-box loser"><div class="title">Current Best (Local)</div><div class="value" style="color:var(--warning)">71.4%</div><div style="font-size:0.75rem;color:var(--text2)">F1 Score</div><div style="font-size:0.75rem;margin-top:0.5rem">smolvlm2<br>0% precision on non-goals</div></div>
+        <div class="highlight-box winner"><div class="title">Overmind + Gemini</div><div class="value" style="color:var(--goal)">80-95%</div><div style="font-size:0.75rem;color:var(--text2)">Expected F1</div><div style="font-size:0.75rem;margin-top:0.5rem">Cloud API<br>Balanced precision/recall</div></div>
+      </div>
+      <div style="margin-top:1rem;font-size:0.85rem"><p><strong>Overmind tunes:</strong></p><ul style="margin:0.5rem 0;padding-left:1.25rem;color:var(--text2)"><li>Prompt engineering</li><li>Model selection</li><li>Frame extraction strategy</li><li>Temperature and generation params</li></ul></div>
+    </div>
+    <div>
+      <h3>Overmind Setup Steps</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <div style="margin-bottom:0.75rem;padding:0.75rem;background:var(--bg);border-radius:0.5rem"><span class="badge" style="margin-right:0.5rem">1</span><code>overmind init</code></div>
+        <div style="margin-bottom:0.75rem;padding:0.75rem;background:var(--bg);border-radius:0.5rem"><span class="badge" style="margin-right:0.5rem">2</span><code>overmind agent register goal-classifier agent.py</code></div>
+        <div style="margin-bottom:0.75rem;padding:0.75rem;background:var(--bg);border-radius:0.5rem"><span class="badge" style="margin-right:0.5rem">3</span><code>overmind optimize goal-classifier</code></div>
+        <div style="padding:0.75rem;background:var(--bg);border-radius:0.5rem"><span class="badge" style="margin-right:0.5rem">4</span>Results in <code>.overmind/agents/goal-classifier/experiments/</code></div>
+      </div>
+      <div style="margin-top:1rem;padding:0.75rem;border:1px solid var(--surface2);border-radius:0.5rem;font-size:0.8rem"><strong>Key:</strong> <code>prompt.txt</code> — iteratively improved by Overmind</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>Model Behavior Patterns</h2>
+  <div class="grid grid-3">
+    <div class="card" style="background:var(--bg)"><h3>smolvlm2-2.2b</h3><div class="badge goal" style="margin-bottom:0.5rem">Always "Goal"</div><div style="font-size:0.85rem;color:var(--text2)"><p><strong class="correct">Pros:</strong> 100% recall</p><p><strong class="incorrect">Cons:</strong> 0% precision on non-goals</p><p><strong>Team:</strong> Random assignment</p></div></div>
+    <div class="card" style="background:var(--bg)"><h3>qwen3-vl</h3><div class="badge not-goal" style="margin-bottom:0.5rem">Always "Not Goal" at Low Res</div><div style="font-size:0.85rem;color:var(--text2)"><p><strong class="correct">Pros:</strong> 100% precision on non-goals</p><p><strong class="incorrect">Cons:</strong> 0% recall at 56/112px</p><p><strong>At 224px:</strong> Only 20% recall</p></div></div>
+    <div class="card" style="background:var(--bg)"><h3>moondream:1.8b</h3><div class="badge warning" style="margin-bottom:0.5rem">Inconsistent</div><div style="font-size:0.85rem;color:var(--text2)"><p><strong class="correct">Pros:</strong> 100% precision + team</p><p><strong class="incorrect">Cons:</strong> 55% empty, 20% recall</p><p><strong>Descriptive:</strong> 42.9% precision</p></div></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>Run Evaluation (Simulated)</h2>
+  <div class="subtitle" style="margin-bottom:1rem">Select models and clips to compare</div>
+  <div style="margin-bottom:1rem"><label style="font-size:0.85rem;color:var(--text2)">Models:</label><div id="model-checkboxes" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem"></div></div>
+  <div style="margin-bottom:1rem"><label style="font-size:0.85rem;color:var(--text2)">Clips:</label><div id="run-clip-checkboxes" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem"></div></div>
+  <button class="btn" id="run-btn" onclick="runEvaluation()">Run Evaluation</button>
+  <div id="run-results" style="margin-top:1.5rem;display:none">
+    <div class="grid grid-2">
+      <div><h3>Aggregate</h3><table id="run-aggregate-table"><thead><tr><th>Model</th><th>F1</th><th>Acc</th><th>Prec</th><th>Rec</th><th>Team</th></tr></thead><tbody></tbody></table></div>
+      <div><h3>Confusion Matrix</h3><div id="run-confusion"></div></div>
+    </div>
+    <div style="margin-top:1rem"><h3>Per-Clip</h3><div style="overflow-x:auto"><table id="run-per-clip-table"><thead><tr><th>Clip</th><th>Truth</th></tr></thead><tbody></tbody></table></div></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:2rem">
+  <h2>Recommendations</h2>
+  <div class="grid grid-2">
+    <div class="recommendation"><h3 style="margin-top:0">For Production</h3><p>Use <strong>cloud vision APIs</strong> (GPT-4o, Claude, Gemini) via Overmind.</p><p>Expected: <strong class="correct">80-95% F1</strong>. Cost: ~$0.01-0.05/clip.</p></div>
+    <div class="recommendation"><h3 style="margin-top:0">For Local</h3><p>Requires <strong>NVIDIA GPU</strong> (RTX 3060+). CPU too slow (20-30s/clip).</p><p>Overmind optimizes prompts but cannot overcome hardware limits.</p></div>
+  </div>
+</div>
+
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

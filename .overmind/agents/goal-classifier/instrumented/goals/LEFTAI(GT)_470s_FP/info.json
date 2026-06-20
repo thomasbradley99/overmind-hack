@@ -1,0 +1,15 @@
+{
+  "game": "LEFTAI(GT)",
+  "goal_time_in_video": 470,
+  "goal_time_in_clip": 10.0,
+  "team": "Red shirts",
+  "teams": [
+    "Black suits",
+    "Red shirts"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A player in a black suit and tie, facing his own goal, accidentally kicks the ball into the net for an own goal.",
+  "clip_start": 460.0,
+  "clip_duration": 20.0
+}

@@ -1,0 +1,15 @@
+{
+  "game": "vs-dark-left-side",
+  "goal_time_in_video": 268,
+  "goal_time_in_clip": 10.0,
+  "team": "Black sportswear",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "A player pounces on a rebound and scores from close range.",
+  "clip_start": 258.0,
+  "clip_duration": 20.0
+}

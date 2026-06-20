@@ -1,0 +1,15 @@
+{
+  "game": "9-8GT-right",
+  "goal_time_in_video": 1978,
+  "goal_time_in_clip": 10.0,
+  "team": "Dark suits",
+  "teams": [
+    "Dark sportswear",
+    "Dark suits"
+  ],
+  "is_real_goal": false,
+  "type": "FP",
+  "description": "The keeper saves the initial shot, but the shooter follows up to tap in the rebound.",
+  "clip_start": 1968.0,
+  "clip_duration": 20.0
+}

@@ -33,8 +33,8 @@ def main():
         else:
             expected = {"goal": True, "team": data.get("team")}
         rows.append({
-            "input": {"input_data": {"clip_path": clip_path, "dataset": args.dataset}},
-            "expected_output": {"goal": expected["goal"], "team": expected["team"], "raw": ""},
+            "input": {"clip_path": clip_path, "dataset": args.dataset},
+            "expected_output": expected,
         })
 
     out = Path(args.out) if args.out else DATA_DIR / "seed.json"
