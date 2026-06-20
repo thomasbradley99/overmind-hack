@@ -27,6 +27,7 @@ cp .env.example .env                  # paste your GEMINI_API_KEY
 
 python3 classify.py                   # run the whole dataset
 python3 classify.py --limit 6         # quick/cheap smoke test
+python3 classify.py --verbose-raw   # print each Gemini API response live
 ```
 
 Output prints a confusion matrix and a final line like:

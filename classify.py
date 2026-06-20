@@ -154,7 +154,8 @@ def score_teams(results: list[dict], teams: list[str]) -> dict:
 
 def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
                      model: str | None = None, workers: int = 8,
-                     limit: int | None = None, verbose: bool = False) -> dict:
+                     limit: int | None = None, verbose: bool = False,
+                     verbose_raw: bool = False) -> dict:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set (export it or put it in .env)")
@@ -185,6 +186,11 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
                 tt = r.get("truth_team") or "-"
                 pt = r.get("pred_team") or "-"
                 print(f"  {mark} {r['clip']:<36} goal {r['truth']}/{r['pred']}  team {tt}/{pt}")
+                if verbose_raw:
+                    print(f"       raw API response:")
+                    for line in r.get("raw", "").splitlines():
+                        print(f"         {line}")
+                    print()
 
     results.sort(key=lambda r: r["clip"])
     goal_metrics = score_goals(results)
@@ -204,6 +210,8 @@ def main():
     p.add_argument("--model", default=None)
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--verbose-raw", action="store_true",
+                   help="Print each clip's raw Gemini API response as it completes")
     args = p.parse_args()
 
     template = Path(args.prompt).read_text().strip()
@@ -211,7 +219,8 @@ def main():
     print(f"Dataset: {args.dataset}   Teams: {teams[0]} vs {teams[1]}")
     print(f"Prompt: {args.prompt}")
     m = classify_dataset(template, dataset=args.dataset, model=args.model,
-                         workers=args.workers, limit=args.limit, verbose=True)
+                         workers=args.workers, limit=args.limit, verbose=True,
+                         verbose_raw=args.verbose_raw)
 
     print("\n" + "=" * 50)
     print(f"GOAL DETECTION  model={m['model']}")
