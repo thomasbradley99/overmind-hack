@@ -318,3 +318,129 @@ renderEnsembleTable();
 renderEnsembleClipTable();
 // Select first clip by default
 showClip(data.clips[0].name, clipSelector.children[0]);
+
+// --- Live Demo Analysis ---
+let demoStrategy = 'or';
+
+function setDemoStrategy(strategy) {
+  demoStrategy = strategy;
+  document.querySelectorAll('.strategy-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.strategy === strategy);
+    btn.style.background = btn.dataset.strategy === strategy ? 'var(--accent)' : '';
+    btn.style.color = btn.dataset.strategy === strategy ? 'white' : '';
+  });
+}
+
+function ensembleDecision(s, m, mode) {
+  if (mode === 'or') {
+    if (s.pred === 'goal' || m.pred === 'goal') {
+      return {
+        pred: 'goal',
+        team: (m.pred === 'goal' && m.team) ? m.team : s.team,
+        confidence: (s.pred === 'goal' && m.pred === 'goal') ? 'high' : 'medium',
+        rationale: 'At least one model detected a goal. Union strategy maximizes recall.'
+      };
+    }
+    return { pred: 'not_goal', team: null, confidence: 'high', rationale: 'Both models agree: no goal.' };
+  }
+  if (mode === 'and') {
+    if (s.pred === 'goal' && m.pred === 'goal') {
+      return { pred: 'goal', team: m.team || s.team, confidence: 'high', rationale: 'Both models agree on goal.' };
+    }
+    return { pred: 'not_goal', team: null, confidence: 'high', rationale: 'Models disagree or both say no goal. Conservative.' };
+  }
+  if (mode === 'cascade') {
+    if (s.pred === 'goal' && m.pred === 'goal') {
+      return { pred: 'goal', team: m.team || s.team, confidence: 'high', rationale: 'smolvlm2 detected goal, moondream confirmed.' };
+    }
+    if (s.pred === 'goal' && m.pred !== 'goal') {
+      return { pred: 'not_goal', team: null, confidence: 'medium', rationale: 'smolvlm2 detected goal but moondream did not confirm. Vetoed.' };
+    }
+    return { pred: 'not_goal', team: null, confidence: 'high', rationale: 'smolvlm2 did not detect a goal.' };
+  }
+  return { pred: 'not_goal', team: null, confidence: 'low', rationale: 'Unknown strategy.' };
+}
+
+function runDemoAnalysis() {
+  const clipName = document.getElementById('demo-clip-select').value;
+  const d = demoData[clipName];
+  if (!d) return;
+
+  const btn = document.getElementById('demo-run-btn');
+  const resultsDiv = document.getElementById('demo-results');
+  const verdictDiv = document.getElementById('demo-verdict');
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  resultsDiv.style.display = 'block';
+  verdictDiv.style.display = 'none';
+
+  // Reset state
+  ['smolvlm2', 'moondream', 'ensemble'].forEach(key => {
+    document.getElementById('demo-' + key + '-status').textContent = 'Waiting...';
+    document.getElementById('demo-' + key + '-result').style.display = 'none';
+  });
+
+  // Step 1: smolvlm2 (fast, ~0.7-1.0s)
+  setTimeout(() => {
+    document.getElementById('demo-smolvlm2-status').textContent = 'Running on macOS Node A (MLX GPU)...';
+  }, 100);
+
+  setTimeout(() => {
+    const s = d.smolvlm2;
+    document.getElementById('demo-smolvlm2-status').textContent = 'Complete';
+    document.getElementById('demo-smolvlm2-result').style.display = 'block';
+    document.getElementById('demo-smolvlm2-pred').querySelector('.value').textContent = s.pred;
+    document.getElementById('demo-smolvlm2-pred').querySelector('.value').style.color = s.pred === 'goal' ? 'var(--goal)' : 'var(--not-goal)';
+    document.getElementById('demo-smolvlm2-team').querySelector('.value').textContent = s.team || '-';
+    document.getElementById('demo-smolvlm2-latency').querySelector('.value').textContent = s.latency.toFixed(1) + 's';
+    document.getElementById('demo-smolvlm2-raw').textContent = s.raw;
+  }, 900);
+
+  // Step 2: moondream (~1.0-1.3s)
+  setTimeout(() => {
+    document.getElementById('demo-moondream-status').textContent = 'Running on Linux Node B (CPU)...';
+  }, 100);
+
+  setTimeout(() => {
+    const m = d.moondream;
+    document.getElementById('demo-moondream-status').textContent = 'Complete';
+    document.getElementById('demo-moondream-result').style.display = 'block';
+    document.getElementById('demo-moondream-pred').querySelector('.value').textContent = m.pred;
+    document.getElementById('demo-moondream-pred').querySelector('.value').style.color = m.pred === 'goal' ? 'var(--goal)' : 'var(--not-goal)';
+    document.getElementById('demo-moondream-team').querySelector('.value').textContent = m.team || '-';
+    document.getElementById('demo-moondream-latency').querySelector('.value').textContent = m.latency.toFixed(1) + 's';
+    document.getElementById('demo-moondream-raw').textContent = m.raw;
+  }, 1400);
+
+  // Step 3: ensemble decision (after both complete)
+  setTimeout(() => {
+    const e = ensembleDecision(d.smolvlm2, d.moondream, demoStrategy);
+    document.getElementById('demo-ensemble-status').textContent = 'Combining results...';
+    document.getElementById('demo-ensemble-result').style.display = 'block';
+    document.getElementById('demo-ensemble-pred').querySelector('.value').textContent = e.pred.toUpperCase();
+    document.getElementById('demo-ensemble-pred').querySelector('.value').style.color = e.pred === 'goal' ? 'var(--goal)' : 'var(--not-goal)';
+    document.getElementById('demo-ensemble-team').querySelector('.value').textContent = e.team || '-';
+    document.getElementById('demo-ensemble-confidence').querySelector('.value').textContent = e.confidence;
+    document.getElementById('demo-ensemble-rationale').textContent = e.rationale;
+
+    // Verdict
+    const g_ok = d.truth === e.pred;
+    const t_ok = d.truth === 'goal' && e.pred === 'goal' && e.team === d.truth_team;
+
+    verdictDiv.style.display = 'block';
+    document.getElementById('demo-truth').querySelector('.value').textContent = d.truth.toUpperCase();
+    document.getElementById('demo-truth').querySelector('.value').style.color = d.truth === 'goal' ? 'var(--goal)' : 'var(--not-goal)';
+    document.getElementById('demo-final').querySelector('.value').textContent = e.pred.toUpperCase();
+    document.getElementById('demo-final').querySelector('.value').style.color = e.pred === 'goal' ? 'var(--goal)' : 'var(--not-goal)';
+    const correctEl = document.getElementById('demo-correct').querySelector('.value');
+    correctEl.textContent = g_ok ? 'YES' : 'NO';
+    correctEl.style.color = g_ok ? 'var(--goal)' : 'var(--not-goal)';
+
+    btn.disabled = false;
+    btn.textContent = 'Run Analysis';
+  }, 1800);
+}
+
+// Set default strategy active
+setDemoStrategy('or');

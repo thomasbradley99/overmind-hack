@@ -156,3 +156,22 @@ const ensembleResults = {
   best_strategy: "or",
   rationale: "smolvlm2 already has 100% recall (catches all goals), so OR/Union doesn't hurt recall but improves team accuracy from 60% to 80% by using moondream's team identification when it detects."
 };
+
+// Predefined demo data for the live clip analysis
+const demoData = {
+  "goal_01_283s_Dark-sportswear": {
+    truth: "goal", truth_team: "Dark sportswear",
+    smolvlm2: { pred: "goal", team: "Dark suits", latency: 1.0, raw: "{\"goal\": true, \"team\": \"Dark suits\"}" },
+    moondream: { pred: "goal", team: "Dark sportswear", latency: 1.3, raw: "The image shows a group of people playing soccer... a goal was scored by Dark sportswear" }
+  },
+  "goal_05_606s_Dark-suits": {
+    truth: "goal", truth_team: "Dark suits",
+    smolvlm2: { pred: "goal", team: "Dark suits", latency: 0.7, raw: "{\"goal\": true, \"team\": \"Dark suits\"}" },
+    moondream: { pred: "not_goal", team: null, latency: 1.0, raw: "" }
+  },
+  "nongoal_04_189s": {
+    truth: "not_goal", truth_team: null,
+    smolvlm2: { pred: "goal", team: "Dark sportswear", latency: 0.8, raw: "{\"goal\": true, \"team\": \"Dark sportswear\"}" },
+    moondream: { pred: "not_goal", team: null, latency: 1.2, raw: "The image shows a group of people playing soccer on an artificial turf field..." }
+  }
+};

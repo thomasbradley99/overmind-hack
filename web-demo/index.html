@@ -447,6 +447,84 @@ python3 run_exo_ensemble.py \
 </div>
 
 <div class="card" style="margin-bottom:2rem">
+  <h2>Live Demo — Single Clip Analysis</h2>
+  <div class="subtitle" style="margin-bottom:1rem">Select a clip, run the two-model ensemble, and see step-by-step results</div>
+
+  <div style="margin-bottom:1rem">
+    <label style="font-size:0.85rem;color:var(--text2);display:block;margin-bottom:0.5rem">Select a predefined clip:</label>
+    <select id="demo-clip-select" style="padding:0.5rem 1rem;border-radius:0.5rem;border:1px solid var(--surface2);background:var(--surface);color:var(--text);font-size:0.9rem;min-width:300px;cursor:pointer">
+      <option value="goal_01_283s_Dark-sportswear">goal_01_283s — Goal (Dark sportswear)</option>
+      <option value="goal_05_606s_Dark-suits">goal_05_606s — Goal (Dark suits)</option>
+      <option value="nongoal_04_189s">nongoal_04_189s — Not a Goal</option>
+    </select>
+  </div>
+
+  <div style="margin-bottom:1rem">
+    <label style="font-size:0.85rem;color:var(--text2);display:block;margin-bottom:0.5rem">Ensemble strategy:</label>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button class="btn strategy-btn active" data-strategy="or" onclick="setDemoStrategy('or')" style="font-size:0.8rem;padding:0.4rem 0.8rem">OR (Union)</button>
+      <button class="btn strategy-btn" data-strategy="and" onclick="setDemoStrategy('and')" style="font-size:0.8rem;padding:0.4rem 0.8rem">AND (Intersection)</button>
+      <button class="btn strategy-btn" data-strategy="cascade" onclick="setDemoStrategy('cascade')" style="font-size:0.8rem;padding:0.4rem 0.8rem">Cascade</button>
+    </div>
+  </div>
+
+  <button class="btn" id="demo-run-btn" onclick="runDemoAnalysis()" style="margin-bottom:1.5rem">Run Analysis</button>
+
+  <div id="demo-results" style="display:none">
+    <div class="grid grid-3" style="margin-bottom:1.5rem">
+      <div class="card" style="background:var(--bg);position:relative">
+        <div style="position:absolute;top:0.5rem;right:0.5rem;font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Step 1</div>
+        <h3 style="color:var(--goal)">smolvlm2-2.2b</h3>
+        <div id="demo-smolvlm2-status" style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem">Waiting...</div>
+        <div id="demo-smolvlm2-result" style="display:none">
+          <div class="metric-grid" style="margin-top:0.5rem">
+            <div class="metric" id="demo-smolvlm2-pred"><div class="value" style="font-size:1rem">-</div><div class="label">Prediction</div></div>
+            <div class="metric" id="demo-smolvlm2-team"><div class="value" style="font-size:1rem">-</div><div class="label">Team</div></div>
+            <div class="metric" id="demo-smolvlm2-latency"><div class="value" style="font-size:1rem">-</div><div class="label">Latency</div></div>
+          </div>
+          <div id="demo-smolvlm2-raw" style="font-size:0.7rem;color:var(--text2);margin-top:0.5rem;font-family:monospace;background:var(--surface);padding:0.5rem;border-radius:0.3rem;max-height:60px;overflow:hidden;text-overflow:ellipsis"></div>
+        </div>
+      </div>
+      <div class="card" style="background:var(--bg);position:relative">
+        <div style="position:absolute;top:0.5rem;right:0.5rem;font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Step 2</div>
+        <h3 style="color:var(--accent2)">moondream:1.8b</h3>
+        <div id="demo-moondream-status" style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem">Waiting...</div>
+        <div id="demo-moondream-result" style="display:none">
+          <div class="metric-grid" style="margin-top:0.5rem">
+            <div class="metric" id="demo-moondream-pred"><div class="value" style="font-size:1rem">-</div><div class="label">Prediction</div></div>
+            <div class="metric" id="demo-moondream-team"><div class="value" style="font-size:1rem">-</div><div class="label">Team</div></div>
+            <div class="metric" id="demo-moondream-latency"><div class="value" style="font-size:1rem">-</div><div class="label">Latency</div></div>
+          </div>
+          <div id="demo-moondream-raw" style="font-size:0.7rem;color:var(--text2);margin-top:0.5rem;font-family:monospace;background:var(--surface);padding:0.5rem;border-radius:0.3rem;max-height:60px;overflow:hidden;text-overflow:ellipsis"></div>
+        </div>
+      </div>
+      <div class="card" style="background:var(--bg);position:relative;border:2px solid var(--accent)">
+        <div style="position:absolute;top:0.5rem;right:0.5rem;font-size:0.7rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.05em">Step 3</div>
+        <h3 style="color:var(--accent)">Ensemble Decision</h3>
+        <div id="demo-ensemble-status" style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem">Waiting for models...</div>
+        <div id="demo-ensemble-result" style="display:none">
+          <div class="metric-grid" style="margin-top:0.5rem">
+            <div class="metric" id="demo-ensemble-pred"><div class="value" style="font-size:1.2rem">-</div><div class="label">Verdict</div></div>
+            <div class="metric" id="demo-ensemble-team"><div class="value" style="font-size:1rem">-</div><div class="label">Team</div></div>
+            <div class="metric" id="demo-ensemble-confidence"><div class="value" style="font-size:1rem">-</div><div class="label">Confidence</div></div>
+          </div>
+          <div id="demo-ensemble-rationale" style="font-size:0.8rem;color:var(--text2);margin-top:0.5rem;padding:0.5rem;background:var(--surface);border-radius:0.3rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="demo-verdict" style="display:none;text-align:center">
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem">Final Verdict vs Ground Truth</div>
+      <div class="grid grid-3" style="max-width:600px;margin:0 auto">
+        <div class="metric" id="demo-truth"><div class="value" style="font-size:1.5rem">-</div><div class="label">Ground Truth</div></div>
+        <div class="metric" id="demo-final"><div class="value" style="font-size:1.5rem">-</div><div class="label">Ensemble Prediction</div></div>
+        <div class="metric" id="demo-correct"><div class="value" style="font-size:1.5rem">-</div><div class="label">Correct?</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:2rem">
   <h2>Recommendations</h2>
   <div class="grid grid-2">
     <div class="recommendation"><h3 style="margin-top:0">For Production</h3><p>Use <strong>cloud vision APIs</strong> (GPT-4o, Claude, Gemini) via Overmind.</p><p>Expected: <strong class="correct">80-95% F1</strong>. Cost: ~$0.01-0.05/clip.</p></div>
