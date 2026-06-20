@@ -32,11 +32,16 @@ overmind-hack/
 │   └── extract.py          # stage 3: narrative → structured JSON
 ├── games/                  # full matches (video + ground truth)
 │   └── 9-8GT-right/
-│       ├── video.mp4        (5.3 GB, Git LFS)
+│       ├── video.mp4        (720p, ~160 MB, Git LFS)
 │       ├── info.json        teams + metadata
 │       └── ground-truth.json
-├── clips/                  # short goal clips for quick/cheap tests (Git LFS)
-│   └── *.mp4
+├── clips/                  # labeled goal clips cut from the games (Git LFS)
+│   └── 9-8GT-right/
+│       ├── goal_01_283s_Dark-sportswear.mp4
+│       ├── goal_01_283s_Dark-sportswear.json   # answer: {time, team, action, ...}
+│       └── ...                                  # one pair per goal
+├── scripts/
+│   └── make_clips.py       # regenerate clips from any game's ground truth
 └── goals/                  # 59 labeled goal candidates (TP/FP) — see goals/README.md
 ```
 
@@ -70,8 +75,8 @@ Also requires `ffmpeg` / `ffprobe` on PATH (used to chunk video).
 ## Run
 
 ```bash
-# Cheapest first test: a single goal clip (~10-30s, one Gemini call)
-python3 run.py --video clips/clip-event_015-630s.mp4
+# Cheapest first test: a single 12s goal clip (one Gemini call)
+python3 run.py --video clips/9-8GT-right/goal_01_283s_Dark-sportswear.mp4
 
 # Quick partial game: first 5 minutes only
 python3 run.py --game 9-8GT-right --minutes 5
@@ -103,12 +108,27 @@ python3 eval.py \
 Prints precision / recall / F1 for **Goals** (a detection matches a GT goal if
 within `tolerance` seconds), plus a timeline of matches, misses, false positives.
 
+## Clips
+
+`clips/<game>/` holds short clips cut around each ground-truth goal, with a
+matching `.json` answer file (time, team, action — no description). They're for
+fast/cheap iteration: one ~12s clip = a single Gemini call.
+
+Regenerate them for any game (defaults: Goals only, 8s before / 4s after):
+
+```bash
+python3 scripts/make_clips.py --game 9-8GT-right
+python3 scripts/make_clips.py --game 9-8GT-right --actions Goal "Near Miss" --before 10 --after 5
+```
+
 ## Add another game
 
 Create `games/<name>/` with:
 - `video.mp4` (LFS handles the size automatically)
 - `info.json`  → `{"teams": ["A", "B"]}`
 - `ground-truth.json` → `{"events": [{"time": <sec>, "action": "Goal", "team": "...", ...}]}`
+
+Then `python3 scripts/make_clips.py --game <name>` to cut its clips.
 
 ## Cost / time
 
