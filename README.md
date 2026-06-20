@@ -57,9 +57,11 @@ print(metrics["f1"])          # <- the score to optimize
 
 ```
 overmind-hack/
-├── classify.py          # THE script: clips → predictions → score
+├── agent.py             # Overmind entrypoint (run one clip → goal + team)
+├── classify.py          # batch runner + scoring
 ├── prompt.txt           # the goal/not-goal prompt (optimize this)
-├── data/                # labeled clip datasets
+├── OVERMIND.md          # how to wire Overmind optimization
+├── data/                # labeled clip datasets + seed.json for Overmind
 │   └── 9-8GT-right/     # 17 goal clips + 17 non-goal clips (+ .json labels)
 ├── results/             # eval output (gitignored)
 ├── scripts/             # dataset builders
@@ -82,6 +84,24 @@ python3 scripts/make_negatives.py --game 9-8GT-right     # random non-goal clips
 
 To add a new game: drop `games/<name>/{video.mp4, info.json, ground-truth.json}`,
 then run the two scripts with `--game <name>`.
+
+## Overmind integration
+
+Full steps in **[OVERMIND.md](OVERMIND.md)**. Short version:
+
+```bash
+uv tool install overmind          # or pipx install overmind
+overmind init
+python3 scripts/export_overmind_dataset.py   # → data/seed.json (34 cases)
+
+# in Cursor / Claude Code:
+# /overmind-register-agent agent.py
+# /overmind-generate-spec-and-dataset goal-classifier
+# /overmind-optimize-agent goal-classifier
+```
+
+Overmind will iterate on `prompt.txt` and `classify.py`, score against `data/seed.json`,
+and save traces + best version under `.overmind/agents/goal-classifier/experiments/`.
 
 ## Notes
 
