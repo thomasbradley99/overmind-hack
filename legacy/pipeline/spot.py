@@ -1,7 +1,7 @@
 """
 Stage 2: Spot / Observe
 - Split video into chunks
-- Send each chunk to Gemini for PURE OBSERVATION
+- Extract frames from each chunk and send to local vision model
 - Output: Plain text descriptions of what happened (no classification)
 - The AI just describes what it sees - interpretation happens in Stage 3
 """
@@ -9,10 +9,12 @@ Stage 2: Spot / Observe
 import subprocess
 import json
 import os
+import re
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict
-import google.generativeai as genai
+
+from .local_model import generate_with_images
 
 
 def _orientation_filter(orientation: Optional[Dict]) -> Optional[str]:
@@ -125,25 +127,44 @@ def chunk_video(
     return chunks
 
 
-def observe_chunk(chunk: dict, teams: list[str], total_duration: float, api_key: str) -> dict:
+def extract_frames(chunk_path: str, output_dir: Path, num_frames: int = 4) -> list[str]:
+    """Extract evenly spaced frames from a video chunk."""
+    chunk_path = Path(chunk_path)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    duration = get_video_duration(str(chunk_path))
+    if duration <= 0:
+        return []
+
+    frames = []
+    for i in range(num_frames):
+        timestamp = duration * i / max(num_frames - 1, 1)
+        frame_path = output_dir / f"frame_{i:03d}.jpg"
+        cmd = [
+            'ffmpeg', '-y',
+            '-ss', str(timestamp),
+            '-i', str(chunk_path),
+            '-vframes', '1',
+            '-q:v', '2',
+            str(frame_path)
+        ]
+        subprocess.run(cmd, capture_output=True, timeout=15)
+        if frame_path.exists():
+            frames.append(str(frame_path))
+    
+    return frames
+
+
+def observe_chunk(chunk: dict, teams: list[str], total_duration: float) -> dict:
     """
-    Observe a single chunk - PURE DESCRIPTION, no classification.
+    Observe a single chunk by extracting frames and feeding them to the local vision model.
     Returns: {"chunk_num": N, "start": S, "end": E, "description": "text..."}
     """
     chunk_num = chunk["chunk_num"]
     chunk_start = chunk["start"]
     chunk_end = chunk["end"]
     chunk_path = chunk["path"]
-    
-    # Configure Gemini
-    temperature = float(os.environ.get("STAGE2_TEMPERATURE", "0.0"))
-    model_name = os.environ.get("STAGE2_MODEL", "gemini-2.5-flash")
-    
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name,
-        generation_config=genai.GenerationConfig(temperature=temperature)
-    )
     
     start_min = chunk_start // 60
     start_sec = chunk_start % 60
@@ -154,12 +175,25 @@ def observe_chunk(chunk: dict, teams: list[str], total_duration: float, api_key:
     team1 = teams[0] if len(teams) > 0 else "Team A"
     team2 = teams[1] if len(teams) > 1 else "Team B"
     
+    # Extract frames from the chunk
+    frames_dir = chunk_path.parent / f"chunk_{chunk_num:03d}_frames"
+    frames = extract_frames(str(chunk_path), frames_dir, num_frames=4)
+    
+    if not frames:
+        print(f"   ⚠️ Chunk {chunk_num}: No frames extracted")
+        return {
+            "chunk_num": chunk_num,
+            "start": chunk_start,
+            "end": chunk_end,
+            "description": "[No frames extracted - unable to analyze]",
+            "error": "Frame extraction failed"
+        }
+
     # Check for custom prompt from optimizer
     prompt_file = os.environ.get("STAGE2_PROMPT_FILE")
     if prompt_file and os.path.exists(prompt_file):
         with open(prompt_file) as f:
             prompt_template = f.read()
-        # Fill in template variables
         prompt = prompt_template.replace("{start_min}", str(start_min))
         prompt = prompt.replace("{start_sec}", str(int(start_sec)))
         prompt = prompt.replace("{end_min}", str(int(end_min)))
@@ -171,7 +205,6 @@ def observe_chunk(chunk: dict, teams: list[str], total_duration: float, api_key:
             print(f"   Using custom prompt: {prompt_file}")
     else:
         # Default prompt - PURE OBSERVATION
-        # Calculate chunk duration for the prompt
         chunk_duration_sec = int(chunk_end - chunk_start)
         chunk_duration_min = chunk_duration_sec // 60
         chunk_duration_remaining_sec = chunk_duration_sec % 60
@@ -184,6 +217,9 @@ CONTEXT: This clip is from {start_min}:{start_sec:02.0f} to {end_min}:{end_sec:0
 But YOUR timestamps should be RELATIVE TO THIS CLIP (starting from 0:00).
 
 YOUR TASK: Describe what happens in this clip. Be a neutral observer.
+
+You are given {len(frames)} frames from this video clip, in chronological order.
+Look at them carefully and describe the action.
 
 DESCRIBE:
 - Any shots on goal (who shot, what happened - saved, scored, missed, hit post)
@@ -213,32 +249,12 @@ OTHER:
 """
 
     try:
-        # Upload video to Gemini
-        video_file = genai.upload_file(chunk_path, mime_type="video/mp4")
-        
-        # Wait for processing
-        import time
-        while video_file.state.name == "PROCESSING":
-            time.sleep(1)
-            video_file = genai.get_file(video_file.name)
-        
-        if video_file.state.name == "FAILED":
-            print(f"   ⚠️ Chunk {chunk_num}: Video processing failed")
-            return {
-                "chunk_num": chunk_num,
-                "start": chunk_start,
-                "end": chunk_end,
-                "description": "[Video processing failed]",
-                "error": "Video processing failed"
-            }
-        
-        # Generate content
-        response = model.generate_content([video_file, prompt])
-        
-        # Clean up uploaded file
-        genai.delete_file(video_file.name)
-        
-        description = response.text.strip()
+        description = generate_with_images(
+            prompt=prompt,
+            image_paths=frames,
+            max_tokens=512,
+            temperature=0.0,
+        ).strip()
         
         # Log what we found
         if "no significant" in description.lower():
@@ -270,12 +286,12 @@ def run(
     video_path: str,
     work_dir: Path,
     teams: list[str],
-    api_key: str,
+    api_key: str = None,  # Kept for API compatibility but unused
     orientation: Optional[Dict] = None,
     max_duration: Optional[float] = None
 ) -> dict:
     """
-    Observe video chunks (parallel) - outputs TEXT descriptions, not JSON flags.
+    Observe video chunks using local vision model - outputs TEXT descriptions, not JSON flags.
     
     Returns:
         {
@@ -290,7 +306,7 @@ def run(
     chunk_duration = int(os.environ.get("CHUNK_DURATION", "60"))
     chunk_overlap = int(os.environ.get("CHUNK_OVERLAP", "0"))
     temperature = float(os.environ.get("STAGE2_TEMPERATURE", "0.0"))
-    model_name = os.environ.get("STAGE2_MODEL", "gemini-2.5-flash")
+    model_name = os.environ.get("STAGE2_MODEL", "local/SmolVLM")
     print(f"   Config: chunks={chunk_duration}s, overlap={chunk_overlap}s, temp={temperature}, model={model_name}")
     
     # Get video duration
@@ -301,31 +317,19 @@ def run(
     chunks = chunk_video(video_path, work_dir, chunk_duration=chunk_duration, chunk_overlap=chunk_overlap, orientation=orientation, max_duration=max_duration)
     print(f"   ✓ Created {len(chunks)} chunks")
     
-    # Observe chunks in parallel
-    print("   Observing chunks (parallel)...")
+    # Observe chunks sequentially (local model is CPU-bound, parallelism is limited)
+    print("   Observing chunks (local model - sequential)...")
     all_results = []
     
-    max_workers = min(len(chunks), 25)  # Limit concurrent uploads to avoid SSL errors
+    for chunk in chunks:
+        result = observe_chunk(chunk, teams, duration)
+        all_results.append(result)
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(observe_chunk, chunk, teams, duration, api_key): chunk
-            for chunk in chunks
-        }
-        
-        for future in as_completed(futures):
-            result = future.result()
-            all_results.append(result)
-    
-    # Sort by chunk number
+    # Sort by chunk number (already in order, but just to be safe)
     all_results.sort(key=lambda x: x["chunk_num"])
     
     # Combine all observations into one text with GLOBAL timestamps
-    import re
     combined = ""
-    
-    # Get chunk duration from config (default 60s)
-    chunk_duration = int(os.environ.get("CHUNK_DURATION", "60"))
     
     for obs in all_results:
         chunk_start = obs['start']  # Global start time in seconds
@@ -337,7 +341,6 @@ def run(
         def convert_timestamp(match):
             """
             Convert timestamps to global time.
-            Gemini sometimes ignores the prompt and gives global timestamps anyway.
             If timestamp > chunk_duration, assume it's already global and don't add offset.
             """
             time_str = match.group(1)
@@ -349,13 +352,9 @@ def run(
             else:
                 return match.group(0)  # Return unchanged if can't parse
             
-            # If timestamp is within chunk bounds (0 to chunk_duration+buffer), 
-            # treat as chunk-relative and add offset
-            # Otherwise, Gemini gave us a global timestamp - use as-is
             if timestamp_seconds <= chunk_duration + 15:  # +15s buffer for overlap
                 global_seconds = chunk_start + timestamp_seconds
             else:
-                # Already a global timestamp, don't add offset
                 global_seconds = timestamp_seconds
             
             global_min = int(global_seconds // 60)

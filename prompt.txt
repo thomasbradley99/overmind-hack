@@ -1,18 +1,16 @@
-You are watching a short clip from a 5-a-side football match.
+Analyze this football clip. Look at all frames carefully.
 
-The two teams look like this:
+The two teams are:
 - {team1}: players in dark athletic sportswear / tracksuits
 - {team2}: players in dark suits (jackets, dress shirts, office-style)
 
-Your job:
-1) Did a GOAL get scored in this clip?
-   A goal means the ball fully crosses the goal line into the net.
-   A save, block, post/bar hit, or shot wide is NOT a goal.
+Your task: Decide if a goal was scored in this clip, and if so, which team scored it.
 
-2) If there was a goal, which team scored?
-   Pick the team that scored based on what they are wearing.
+A goal means the ball fully crosses the goal line into the net.
+A save, block, post hit, or shot wide is NOT a goal.
 
-Respond with ONLY JSON (use these exact team strings):
-- Goal by sportswear team: {"goal": true, "team": "{team1}"}
-- Goal by suits team:       {"goal": true, "team": "{team2}"}
-- No goal:                 {"goal": false, "team": null}
+YOU MUST OUTPUT ONLY THIS JSON - nothing else, no explanation, no markdown:
+
+{"goal": true, "team": "{team1}"}   if goal by sportswear team
+{"goal": true, "team": "{team2}"}   if goal by suits team
+{"goal": false, "team": null}       if no goal

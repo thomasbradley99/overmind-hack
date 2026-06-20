@@ -2,7 +2,7 @@
 """
 Goal classifier — the core experiment loop.
 
-Runs every clip in a dataset through a VLM and asks:
+Runs every clip in a dataset through a local VLM (Ollama) and asks:
   1) was there a goal?
   2) if yes, which team scored? (sportswear vs suits)
 
@@ -10,17 +10,21 @@ Scores goal detection (F1) and team assignment on goal clips.
 
 Knobs for Overmind:
   - PROMPT (--prompt, default prompt.txt; use {team1} / {team2} placeholders)
-  - MODEL  (--model or CLASSIFIER_MODEL)
+  - MODEL  (--model or OLLAMA_MODEL env var)
 """
 
 import argparse
+import base64
 import json
 import os
+import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import tempfile
+import requests
 
-import google.generativeai as genai
+
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
@@ -34,6 +38,9 @@ if env_file.exists():
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             os.environ.setdefault(k.strip(), v.strip())
+
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "richardyoung/smolvlm2-2.2b-instruct:latest")
 
 
 def load_teams(dataset: str) -> list[str]:
@@ -70,24 +77,147 @@ def normalize_team(text: str | None, teams: list[str]) -> str | None:
     return text.strip()
 
 
+def extract_clip_frames(clip_path: str, num_frames: int = 3, max_size: int = 336) -> list[str]:
+    """Extract evenly spaced frames from a short video clip, optionally resized."""
+    work_dir = Path(tempfile.mkdtemp(prefix="classify-"))
+    # Get clip duration
+    duration_cmd = [
+        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1", clip_path
+    ]
+    duration_result = subprocess.run(duration_cmd, capture_output=True, text=True)
+    try:
+        duration = float(duration_result.stdout.strip())
+    except ValueError:
+        duration = 0.0
+    frames = []
+    for i in range(num_frames):
+        ts = duration * i / max(num_frames - 1, 1)
+        frame = work_dir / f"frame_{i:03d}.jpg"
+        cmd = [
+            "ffmpeg", "-y", "-ss", str(ts),
+            "-i", clip_path, "-vframes", "1",
+        ]
+        if max_size and max_size > 0:
+            cmd += ["-vf", f"scale='min({max_size},iw)':-1"]
+        cmd += ["-q:v", "2", str(frame)]
+        subprocess.run(cmd, capture_output=True, timeout=10)
+        if frame.exists():
+            frames.append(str(frame))
+    return frames
+
+
+def _ollama_chat(payload: dict) -> str:
+    url = f"{OLLAMA_HOST}/api/chat"
+    payload.setdefault("stream", False)
+    try:
+        resp = requests.post(url, json=payload, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("message", {}).get("content", "")
+    except requests.exceptions.ConnectionError as e:
+        raise RuntimeError(
+            f"Cannot connect to Ollama at {OLLAMA_HOST}. "
+            f"Is ollama running? Error: {e}"
+        )
+
+
+def _extract_prediction(raw: str, teams: list[str]) -> tuple[bool, str | None]:
+    """
+    Robustly parse SmolVLM2 output into (goal, team).
+    Handles multiple template examples, markdown, and nested JSON.
+    """
+    import re
+
+    txt = raw.strip()
+    if txt.startswith("```"):
+        txt = txt.split("```")[1].lstrip("json").strip()
+
+    # Strategy 1: Find all valid JSON objects in the text and pick the one
+    # that matches the expected schema (has 'goal' and 'team' keys)
+    candidates = []
+    # Match JSON objects
+    for obj_match in re.finditer(r'\{[^{}]*\}', txt):
+        try:
+            obj = json.loads(obj_match.group(0))
+            if isinstance(obj, dict) and "goal" in obj:
+                candidates.append(obj)
+        except json.JSONDecodeError:
+            continue
+
+    # Also try nested JSON with "goals" wrapper
+    if not candidates:
+        try:
+            parsed = json.loads(txt)
+            if isinstance(parsed, dict):
+                # Flatten nested structures
+                for key, val in parsed.items():
+                    if isinstance(val, dict) and "goal" in val:
+                        candidates.append(val)
+                    elif isinstance(val, list):
+                        for item in val:
+                            if isinstance(item, dict) and "goal" in item:
+                                candidates.append(item)
+        except json.JSONDecodeError:
+            pass
+
+    if not candidates:
+        return False, None
+
+    # Pick the candidate that says goal=true (most likely the actual prediction)
+    # If multiple goal=true, pick the one with a valid team name
+    goal_candidates = [c for c in candidates if c.get("goal") is True]
+    if goal_candidates:
+        for c in goal_candidates:
+            team = c.get("team")
+            if team in teams:
+                return True, team
+        # Fallback: first goal candidate
+        return True, str(goal_candidates[0].get("team", "")) if goal_candidates[0].get("team") else (False, None)
+
+    # If no goal=true, use first goal=false
+    no_goal = [c for c in candidates if c.get("goal") is False or c.get("goal") is None]
+    if no_goal:
+        return False, None
+
+    # Fallback: last resort
+    return False, None
+
+
 def classify_one(clip: Path, prompt: str, teams: list[str],
-                 model_name: str, api_key: str) -> dict:
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name, generation_config=genai.GenerationConfig(temperature=0.0)
-    )
+                 model_name: str, api_key: str | None = None) -> dict:
+    """Classify a single clip using the local Ollama vision model."""
     truth, truth_team = labels_for(clip.with_suffix(".json"))
     try:
-        resp = model.generate_content(
-            [{"mime_type": "video/mp4", "data": clip.read_bytes()}, prompt]
-        )
-        raw = resp.text.strip()
-        txt = raw
-        if txt.startswith("```"):
-            txt = txt.split("```")[1].lstrip("json").strip()
-        parsed = json.loads(txt)
-        pred = "goal" if parsed.get("goal") else "not_goal"
-        pred_team = normalize_team(parsed.get("team"), teams) if pred == "goal" else None
+        # Extract frames from the clip
+        frames = extract_clip_frames(str(clip), num_frames=3)
+        if not frames:
+            raise RuntimeError("Could not extract frames from clip")
+
+        # Encode frames to base64
+        images_b64 = []
+        for f in frames:
+            with open(f, "rb") as img:
+                images_b64.append(base64.b64encode(img.read()).decode("utf-8"))
+
+        # Build Ollama payload
+        payload = {
+            "model": model_name,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "images": images_b64,
+                }
+            ],
+            "stream": False,
+            "options": {"temperature": 0.0},
+        }
+
+        raw = _ollama_chat(payload).strip()
+        goal, pred_team = _extract_prediction(raw, teams)
+        pred = "goal" if goal else "not_goal"
+        pred_team = normalize_team(pred_team, teams) if pred == "goal" else None
         return {
             "clip": clip.name,
             "truth": truth,
@@ -155,10 +285,7 @@ def score_teams(results: list[dict], teams: list[str]) -> dict:
 def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
                      model: str | None = None, workers: int = 8,
                      limit: int | None = None, verbose: bool = False) -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY not set (export it or put it in .env)")
-    model = model or os.environ.get("CLASSIFIER_MODEL", "gemini-3.5-flash")
+    model = model or os.environ.get("CLASSIFIER_MODEL", OLLAMA_MODEL)
     teams = load_teams(dataset)
     prompt = build_prompt(prompt_template, teams)
 
@@ -170,7 +297,7 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
 
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = [ex.submit(classify_one, c, prompt, teams, model, api_key) for c in clips]
+        futs = [ex.submit(classify_one, c, prompt, teams, model, None) for c in clips]
         for fut in as_completed(futs):
             r = fut.result()
             results.append(r)
@@ -198,11 +325,12 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
 
 
 def main():
-    p = argparse.ArgumentParser(description="VLM goal + team classifier")
+    p = argparse.ArgumentParser(description="VLM goal + team classifier (local Ollama model)")
     p.add_argument("--dataset", default="9-8GT-right")
     p.add_argument("--prompt", default=str(ROOT / "prompt.txt"))
     p.add_argument("--model", default=None)
-    p.add_argument("--workers", type=int, default=8)
+    p.add_argument("--workers", type=int, default=2,
+                     help="Concurrent workers (default 2; keep low for local GPU)")
     p.add_argument("--limit", type=int, default=None)
     args = p.parse_args()
 
@@ -210,6 +338,7 @@ def main():
     teams = load_teams(args.dataset)
     print(f"Dataset: {args.dataset}   Teams: {teams[0]} vs {teams[1]}")
     print(f"Prompt: {args.prompt}")
+    print(f"Model:  {args.model or os.environ.get('CLASSIFIER_MODEL', OLLAMA_MODEL)}")
     m = classify_dataset(template, dataset=args.dataset, model=args.model,
                          workers=args.workers, limit=args.limit, verbose=True)
 
@@ -235,11 +364,47 @@ def main():
     print(f"  Team accuracy (detected): {m['team_accuracy_on_detected_goals']*100:.1f}%")
     print("=" * 50)
 
-    RESULTS_DIR.mkdir(exist_ok=True)
-    out = RESULTS_DIR / f"{args.dataset}_{m['model']}.json"
-    out.write_text(json.dumps(m, indent=2))
-    print(f"\nSaved: {out}")
+    save_per_clip_results(m["results"], args.dataset, m["model"], teams)
+    print(f"\nPer-clip results saved under: {RESULTS_DIR / args.dataset}")
     print(f"SCORE f1={m['f1']:.4f} team_acc={m['team_accuracy_on_detected_goals']:.4f}")
+
+def save_per_clip_results(results: list[dict], dataset: str, model: str, teams: list[str]):
+    """Write/update one JSON per clip, keyed by model name for comparison."""
+    out_dir = RESULTS_DIR / dataset
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for r in results:
+        clip_name = r["clip"]
+        # Strip .mp4 extension for the filename base
+        base = clip_name.rsplit(".", 1)[0]
+        path = out_dir / f"{base}.json"
+
+        if path.exists():
+            data = json.loads(path.read_text())
+        else:
+            data = {
+                "clip": clip_name,
+                "truth": r["truth"],
+                "truth_team": r["truth_team"],
+                "models": {},
+            }
+
+        goal_ok = r["pred"] == r["truth"]
+        team_ok = (
+            r["truth"] != "goal"
+            or r["pred"] != "goal"
+            or normalize_team(r.get("truth_team"), teams)
+            == normalize_team(r.get("pred_team"), teams)
+        )
+
+        data["models"][model] = {
+            "pred": r["pred"],
+            "pred_team": r.get("pred_team"),
+            "raw": r.get("raw", ""),
+            "goal_correct": goal_ok,
+            "team_correct": team_ok,
+        }
+        path.write_text(json.dumps(data, indent=2))
+
 
 
 if __name__ == "__main__":

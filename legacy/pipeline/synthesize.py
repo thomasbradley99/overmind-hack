@@ -7,10 +7,10 @@ Stage 3: Synthesize / Interpret
 """
 
 import os
-import google.generativeai as genai
+from .local_model import generate_text
 
 
-def run(observations: str, teams: list[str], video_duration: float, api_key: str) -> str:
+def run(observations: str, teams: list[str], video_duration: float, api_key: str = None) -> str:
     """
     Interpret observations and create narrative with identified events.
     
@@ -18,7 +18,7 @@ def run(observations: str, teams: list[str], video_duration: float, api_key: str
         observations: Combined text observations from all chunks (Stage 2 output)
         teams: ["Team A", "Team B"]
         video_duration: Total video duration in seconds
-        api_key: Gemini API key
+        api_key: Kept for API compatibility but unused
     
     Returns:
         Narrative text with confirmed events (goals, near misses, big hits)
@@ -110,19 +110,11 @@ IMPORTANT:
 - List events chronologically
 """
 
-    # Configure Gemini
-    genai.configure(api_key=api_key)
-    model_name = os.environ.get("STAGE3_MODEL", "gemini-2.5-flash")
-    model = genai.GenerativeModel(
-        model_name,
-        generation_config=genai.GenerationConfig(temperature=0.0)
-    )
+    model_name = os.environ.get("STAGE3_MODEL", "local/SmolVLM")
     print(f"   Using model: {model_name}")
     
     print(f"   Processing {len(observations)} chars of observations...")
-    response = model.generate_content(prompt)
-    
-    narrative = response.text.strip()
+    narrative = generate_text(prompt, max_tokens=2048, temperature=0.0).strip()
     
     # Count identified events
     lines = narrative.lower()

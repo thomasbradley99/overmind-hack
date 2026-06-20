@@ -3,17 +3,22 @@
 Run the VLM football analysis pipeline locally on one game.
 
 Pipeline:
-  1. Spot      - chunk video, Gemini describes each chunk (plain text)
-  2. Synthesize- Gemini turns descriptions into a narrative + identified events
-  3. Extract   - Gemini converts the narrative into structured JSON events
+  1. Spot      - chunk video, extract frames, local SmolVLM describes each chunk (plain text)
+  2. Synthesize- local SmolVLM turns descriptions into a narrative + identified events
+  3. Extract   - local SmolVLM converts the narrative into structured JSON events
 
 Outputs land in: games/<game>/runs/<timestamp>/
 The final detected events are in stage3_events.json (schema: {events, metadata}).
 
 Usage:
-  GEMINI_API_KEY=xxx python3 run.py --game 9-8GT-right
-  GEMINI_API_KEY=xxx python3 run.py --game 9-8GT-right --minutes 5   # quick/cheap test
-  GEMINI_API_KEY=xxx python3 run.py --game 9-8GT-right --eval        # also score vs ground-truth
+  python3 run.py --game 9-8GT-right
+  python3 run.py --game 9-8GT-right --minutes 5   # quick/faster test
+  python3 run.py --game 9-8GT-right --eval        # also score vs ground-truth
+
+Environment variables:
+  LOCAL_MODEL_PATH - path to the GGUF model file (default: models/SmolVLM-Base.Q8_0.gguf)
+  LOCAL_MODEL_N_CTX - context size (default: 8192)
+  LOCAL_MODEL_N_GPU_LAYERS - GPU layers offloading (default: 0, CPU only)
 """
 
 import argparse
@@ -26,7 +31,7 @@ from datetime import datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-GAMES_DIR = SCRIPT_DIR / "games"
+GAMES_DIR = SCRIPT_DIR.parent / "games"
 
 # Load .env (KEY=VALUE lines) if present, without overriding real env vars.
 env_file = SCRIPT_DIR / ".env"
@@ -60,7 +65,7 @@ def load_teams(game_dir: Path) -> list[str]:
 
 
 def run_pipeline(video_path: Path, teams: list[str], out_root: Path,
-                 api_key: str, max_minutes: float | None) -> Path:
+                 max_minutes: float | None) -> Path:
     if not video_path.exists():
         sys.exit(f"ERROR: video not found at {video_path}")
 
@@ -93,7 +98,7 @@ def run_pipeline(video_path: Path, teams: list[str], out_root: Path,
     # ---- Stage 1: Spot ----
     print("\n[1/3] Spotting (describe video chunks)...")
     t0 = time.time()
-    spot_result = spot.run(str(video_path), work_dir, teams, api_key, max_duration=max_duration)
+    spot_result = spot.run(str(video_path), work_dir, teams, max_duration=max_duration)
     observations = spot_result.get("combined_observations", "")
     timing["spot_seconds"] = round(time.time() - t0, 1)
     (out_dir / "stage1_observations.json").write_text(json.dumps(spot_result, indent=2))
@@ -103,7 +108,7 @@ def run_pipeline(video_path: Path, teams: list[str], out_root: Path,
     # ---- Stage 2: Synthesize ----
     print("\n[2/3] Synthesizing (narrative + events)...")
     t0 = time.time()
-    narrative = synthesize.run(observations, teams, duration, api_key)
+    narrative = synthesize.run(observations, teams, duration)
     timing["synthesize_seconds"] = round(time.time() - t0, 1)
     (out_dir / "stage2_narrative.txt").write_text(narrative)
     print(f"      done in {timing['synthesize_seconds']}s")
@@ -111,7 +116,7 @@ def run_pipeline(video_path: Path, teams: list[str], out_root: Path,
     # ---- Stage 3: Extract ----
     print("\n[3/3] Extracting structured JSON...")
     t0 = time.time()
-    events = extract.run(narrative, teams, duration, api_key)
+    events = extract.run(narrative, teams, duration)
     timing["extract_seconds"] = round(time.time() - t0, 1)
     (out_dir / "stage3_events.json").write_text(json.dumps(events, indent=2))
     print(f"      done in {timing['extract_seconds']}s")
@@ -127,7 +132,7 @@ def run_pipeline(video_path: Path, teams: list[str], out_root: Path,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the VLM football analysis pipeline locally")
+    parser = argparse.ArgumentParser(description="Run the VLM football analysis pipeline locally with a local model")
     parser.add_argument("--game", default=None,
                         help="Game folder name under games/ (has video.mp4 + ground-truth.json)")
     parser.add_argument("--video", default=None,
@@ -145,10 +150,6 @@ def main():
     if args.game and args.video:
         sys.exit("ERROR: pass either --game or --video, not both")
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        sys.exit("ERROR: set GEMINI_API_KEY (export it or put it in .env)")
-
     # --- Single video / clip mode ---
     if args.video:
         video_path = Path(args.video)
@@ -156,7 +157,7 @@ def main():
         info = video_path.parent / "info.json"
         teams = json.loads(info.read_text()).get("teams", ["Team A", "Team B"]) if info.exists() else ["Team A", "Team B"]
         out_root = SCRIPT_DIR / "outputs" / video_path.stem
-        out_dir = run_pipeline(video_path, teams, out_root, api_key, args.minutes)
+        out_dir = run_pipeline(video_path, teams, out_root, args.minutes)
         print(f"\nDetected events: {out_dir / 'stage3_events.json'}")
         return
 
@@ -164,7 +165,7 @@ def main():
     game_dir = GAMES_DIR / args.game
     video_path = game_dir / "video.mp4"
     teams = load_teams(game_dir)
-    out_dir = run_pipeline(video_path, teams, game_dir, api_key, args.minutes)
+    out_dir = run_pipeline(video_path, teams, game_dir, args.minutes)
 
     if args.eval:
         gt = game_dir / "ground-truth.json"

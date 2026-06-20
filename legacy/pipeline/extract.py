@@ -14,7 +14,7 @@ DO NOT MODIFY without checking EVENT_SCHEMA.ts compatibility!
 
 import json
 import os
-import google.generativeai as genai
+from .local_model import generate_text
 
 # =============================================================================
 # SCHEMA DEFINITION (must match /shared/EVENT_SCHEMA.ts)
@@ -91,7 +91,7 @@ def validate_output(result: dict, teams: list[str]) -> tuple[bool, list[str]]:
 # MAIN FUNCTION
 # =============================================================================
 
-def run(narrative: str, teams: list[str], video_duration: float, api_key: str) -> dict:
+def run(narrative: str, teams: list[str], video_duration: float, api_key: str = None) -> dict:
     """
     Extract structured JSON from narrative
     
@@ -99,7 +99,7 @@ def run(narrative: str, teams: list[str], video_duration: float, api_key: str) -
         narrative: Text narrative from stage 3
         teams: ["Team A", "Team B"]
         video_duration: Total video duration in seconds
-        api_key: Gemini API key
+        api_key: Kept for API compatibility but unused
     
     Returns:
         {
@@ -109,13 +109,8 @@ def run(narrative: str, teams: list[str], video_duration: float, api_key: str) -
     """
     print("📊 Stage 4: Extracting JSON...")
     
-    # Configure Gemini - use same model as rest of optimized pipeline
-    genai.configure(api_key=api_key)
-    model_name = os.environ.get("STAGE4_MODEL", "gemini-2.5-pro")
-    model = genai.GenerativeModel(
-        model_name,
-        generation_config=genai.GenerationConfig(temperature=0.0)
-    )
+    model_name = os.environ.get("STAGE4_MODEL", "local/SmolVLM")
+    print(f"   Using model: {model_name}")
     
     prompt = f"""Convert this match narrative into structured JSON.
 
@@ -168,8 +163,7 @@ RULES:
 Output ONLY valid JSON, no markdown, no explanation.
 """
 
-    response = model.generate_content(prompt)
-    response_text = response.text.strip()
+    response_text = generate_text(prompt, max_tokens=2048, temperature=0.0).strip()
     
     # Clean up JSON (remove markdown code blocks if present)
     if response_text.startswith('```'):
