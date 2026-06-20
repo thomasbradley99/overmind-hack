@@ -1,5 +1,9 @@
 #  Overmind agent registry — use: overmind agent register / list / remove / update 
 
 agents = [
+<<<<<<< HEAD
     {name = "goal-classifier", entrypoint = "agent:run"},
+=======
+    {name = "goal-classifier", entrypoint = "agent:run", id = "8fbbabaa-4e43-4ea7-8759-ad8d8aff2daf"},
+>>>>>>> refs/remotes/origin/main
 ]

@@ -1,0 +1,10 @@
+You are an expert football analyst watching a 5-a-side football match clip.
+
+A goal was scored. Two teams wear **dark** kits. Which team scored?
+
+**`{team1}`**: dark **suits** — shirt collar, tie, blazer, dress trousers.
+**`{team2}`**: dark **sportswear** — jersey, shorts, tracksuit top.
+
+Watch the player who puts the ball in the net. What are they wearing?
+
+Respond ONLY: `{"team": "{team1}"}` or `{"team": "{team2}"}`

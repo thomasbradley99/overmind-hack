@@ -2,29 +2,26 @@
 """
 Goal classifier — the core experiment loop.
 
-Runs every clip in a dataset through a local VLM (Ollama) and asks:
+Runs every clip in a dataset through a VLM and asks:
   1) was there a goal?
   2) if yes, which team scored? (sportswear vs suits)
 
 Scores goal detection (F1) and team assignment on goal clips.
 
-Knobs for Overmind:
-  - PROMPT (--prompt, default prompt.txt; use {team1} / {team2} placeholders)
-  - MODEL  (--model or OLLAMA_MODEL env var)
+Default: one clip → one Gemini call → JSON {goal, team} using prompt.txt.
+Optional: --mode twostage for split goal/team prompts (experiments only).
 """
 
 import argparse
-import base64
 import json
 import os
-import subprocess
+import re
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-import tempfile
-import requests
 
-
+import google.generativeai as genai
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
@@ -38,9 +35,6 @@ if env_file.exists():
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
             os.environ.setdefault(k.strip(), v.strip())
-
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "richardyoung/smolvlm2-2.2b-instruct:latest")
 
 
 def load_teams(dataset: str) -> list[str]:
@@ -77,147 +71,197 @@ def normalize_team(text: str | None, teams: list[str]) -> str | None:
     return text.strip()
 
 
-def extract_clip_frames(clip_path: str, num_frames: int = 3, max_size: int = 336) -> list[str]:
-    """Extract evenly spaced frames from a short video clip, optionally resized."""
-    work_dir = Path(tempfile.mkdtemp(prefix="classify-"))
-    # Get clip duration
-    duration_cmd = [
-        "ffprobe", "-v", "error", "-show_entries", "format=duration",
-        "-of", "default=noprint_wrappers=1:nokey=1", clip_path
-    ]
-    duration_result = subprocess.run(duration_cmd, capture_output=True, text=True)
-    try:
-        duration = float(duration_result.stdout.strip())
-    except ValueError:
-        duration = 0.0
-    frames = []
-    for i in range(num_frames):
-        ts = duration * i / max(num_frames - 1, 1)
-        frame = work_dir / f"frame_{i:03d}.jpg"
-        cmd = [
-            "ffmpeg", "-y", "-ss", str(ts),
-            "-i", clip_path, "-vframes", "1",
-        ]
-        if max_size and max_size > 0:
-            cmd += ["-vf", f"scale='min({max_size},iw)':-1"]
-        cmd += ["-q:v", "2", str(frame)]
-        subprocess.run(cmd, capture_output=True, timeout=10)
-        if frame.exists():
-            frames.append(str(frame))
-    return frames
+def infer_from_prose(raw: str, teams: list[str]) -> dict:
+    """Fallback when local VLMs answer in prose instead of JSON."""
+    lower = raw.lower()
+    team = None
+    for t in teams:
+        if t.lower() in lower:
+            team = t
 
+    scoring_line = re.search(
+        r"scoring team[^.\n]{0,60}(dark suits|dark sportswear)",
+        lower,
+    )
+    if scoring_line:
+        label = scoring_line.group(1)
+        team = "Dark suits" if "suits" in label else "Dark sportswear"
+        return {"goal": True, "team": team}
 
-def _ollama_chat(payload: dict, timeout: int = 600) -> str:
-    url = f"{OLLAMA_HOST}/api/chat"
-    payload.setdefault("stream", False)
-    try:
-        resp = requests.post(url, json=payload, timeout=timeout)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("message", {}).get("content", "")
-    except requests.exceptions.ConnectionError as e:
-        raise RuntimeError(
-            f"Cannot connect to Ollama at {OLLAMA_HOST}. "
-            f"Is ollama running? Error: {e}"
+    goal_hit = any(
+        re.search(p, lower)
+        for p in (
+            r"goal (?:has |was )?scored",
+            r"a goal has been scored",
+            r"indicating that a goal",
+            r'"goal"\s*:\s*true',
         )
+    )
+    if goal_hit:
+        return {"goal": True, "team": normalize_team(team, teams)}
+
+    return {"goal": False, "team": None}
 
 
-def _extract_prediction(raw: str, teams: list[str]) -> tuple[bool, str | None]:
-    """
-    Robustly parse SmolVLM2 output into (goal, team).
-    Handles multiple template examples, markdown, and nested JSON.
-    """
-    import re
-
+def parse_model_json(raw: str, teams: list[str] | None = None) -> dict | list:
     txt = raw.strip()
-    if txt.startswith("```"):
-        txt = txt.split("```")[1].lstrip("json").strip()
+    if not txt:
+        raise ValueError("empty model response")
 
-    # Strategy 1: Find all valid JSON objects in the text and pick the one
-    # that matches the expected schema (has 'goal' and 'team' keys)
-    candidates = []
-    # Match JSON objects
-    for obj_match in re.finditer(r'\{[^{}]*\}', txt):
+    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", txt, re.DOTALL | re.IGNORECASE)
+    if fence:
+        txt = fence.group(1).strip()
+
+    try:
+        return json.loads(txt)
+    except json.JSONDecodeError:
+        for pattern in (r"\[[\s\S]*\]", r"\{[\s\S]*\}"):
+            match = re.search(pattern, txt)
+            if match:
+                try:
+                    return json.loads(match.group())
+                except json.JSONDecodeError:
+                    continue
+        if teams:
+            return infer_from_prose(raw, teams)
+        raise
+
+
+def aggregate_predictions(parsed: dict | list, teams: list[str]) -> dict:
+    """Collapse per-frame / per-grid-cell VLM output into one {goal, team}."""
+    if isinstance(parsed, dict):
+        return parsed
+
+    if not isinstance(parsed, list) or not parsed:
+        return {"goal": False, "team": None}
+
+    if all(isinstance(x, bool) for x in parsed):
+        return {"goal": any(parsed), "team": None}
+
+    if all(isinstance(x, dict) for x in parsed):
+        goals = [bool(x.get("goal")) for x in parsed]
+        n = len(goals)
+        goal_votes = sum(goals)
+        not_goal_votes = n - goal_votes
+        if goal_votes == 0:
+            is_goal = False
+        elif not_goal_votes == 0:
+            is_goal = True
+        elif goal_votes == 1 and not_goal_votes >= 2:
+            is_goal = True
+        elif goal_votes > not_goal_votes:
+            is_goal = True
+        else:
+            is_goal = False
+        if not is_goal:
+            return {"goal": False, "team": None}
+        team_votes = [
+            normalize_team(x.get("team"), teams) for x in parsed if x.get("goal")
+        ]
+        team_votes = [t for t in team_votes if t]
+        team = majority_team(team_votes, teams) if team_votes else None
+        return {"goal": True, "team": team}
+
+    return {"goal": False, "team": None}
+
+
+def vlm_generate(
+    clip: Path,
+    prompt: str,
+    model_name: str,
+    api_key: str,
+    temperature: float = 0.0,
+    retries: int = 3,
+) -> str:
+    backend = os.environ.get("CLASSIFIER_BACKEND", "gemini").lower()
+    if backend in ("qwen", "qwen3", "ollama", "local"):
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        use_qwen = backend in ("qwen", "qwen3") or "qwen" in model_name.lower()
+        last_err: Exception | None = None
+        for attempt in range(retries):
+            try:
+                if use_qwen:
+                    from vlm_local import qwen_generate
+
+                    return qwen_generate(
+                        clip,
+                        prompt,
+                        model_name,
+                        host=host,
+                        temperature=temperature,
+                    )
+                from vlm_local import ollama_generate
+
+                n_frames = int(os.environ.get("LOCAL_VLM_FRAMES", "4"))
+                return ollama_generate(
+                    clip,
+                    prompt,
+                    model_name,
+                    host=host,
+                    temperature=temperature,
+                    n_frames=n_frames,
+                )
+            except Exception as e:
+                last_err = e
+                if attempt < retries - 1:
+                    time.sleep(1.5 * (attempt + 1))
+        raise last_err or RuntimeError("local VLM failed")
+
+    last_err: Exception | None = None
+    for attempt in range(retries):
         try:
-            obj = json.loads(obj_match.group(0))
-            if isinstance(obj, dict) and "goal" in obj:
-                candidates.append(obj)
-        except json.JSONDecodeError:
-            continue
-
-    # Also try nested JSON with "goals" wrapper
-    if not candidates:
-        try:
-            parsed = json.loads(txt)
-            if isinstance(parsed, dict):
-                # Flatten nested structures
-                for key, val in parsed.items():
-                    if isinstance(val, dict) and "goal" in val:
-                        candidates.append(val)
-                    elif isinstance(val, list):
-                        for item in val:
-                            if isinstance(item, dict) and "goal" in item:
-                                candidates.append(item)
-        except json.JSONDecodeError:
-            pass
-
-    if not candidates:
-        return False, None
-
-    # Pick the candidate that says goal=true (most likely the actual prediction)
-    # If multiple goal=true, pick the one with a valid team name
-    goal_candidates = [c for c in candidates if c.get("goal") is True]
-    if goal_candidates:
-        for c in goal_candidates:
-            team = c.get("team")
-            if team in teams:
-                return True, team
-        # Fallback: first goal candidate
-        return True, str(goal_candidates[0].get("team", "")) if goal_candidates[0].get("team") else (False, None)
-
-    # If no goal=true, use first goal=false
-    no_goal = [c for c in candidates if c.get("goal") is False or c.get("goal") is None]
-    if no_goal:
-        return False, None
-
-    # Fallback: last resort
-    return False, None
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(
+                model_name,
+                generation_config=genai.GenerationConfig(temperature=temperature),
+            )
+            resp = model.generate_content(
+                [{"mime_type": "video/mp4", "data": clip.read_bytes()}, prompt]
+            )
+            raw = (resp.text or "").strip()
+            if not raw:
+                raise ValueError("empty model response")
+            return raw
+        except Exception as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(1.5 * (attempt + 1))
+    raise last_err or RuntimeError("vlm_generate failed")
 
 
-def classify_one(clip: Path, prompt: str, teams: list[str],
-                 model_name: str, api_key: str | None = None) -> dict:
-    """Classify a single clip using the local Ollama vision model."""
+def majority_team(votes: list[str | None], teams: list[str]) -> str | None:
+    from collections import Counter
+
+    valid = [v for v in votes if v]
+    if not valid:
+        return None
+    counts = Counter(valid)
+    top = counts.most_common()
+    if len(top) == 1:
+        return top[0][0]
+    if top[0][1] > top[1][1]:
+        return top[0][0]
+    # tie — prefer vote from first pass
+    for v in votes:
+        if v:
+            return v
+    return None
+
+
+def classify_one(
+    clip: Path,
+    prompt: str,
+    teams: list[str],
+    model_name: str,
+    api_key: str,
+    temperature: float = 0.0,
+) -> dict:
     truth, truth_team = labels_for(clip.with_suffix(".json"))
     try:
-        # Extract frames from the clip
-        frames = extract_clip_frames(str(clip), num_frames=3)
-        if not frames:
-            raise RuntimeError("Could not extract frames from clip")
-
-        # Encode frames to base64
-        images_b64 = []
-        for f in frames:
-            with open(f, "rb") as img:
-                images_b64.append(base64.b64encode(img.read()).decode("utf-8"))
-
-        # Build Ollama payload
-        payload = {
-            "model": model_name,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                    "images": images_b64,
-                }
-            ],
-            "stream": False,
-            "options": {"temperature": 0.0},
-        }
-
-        raw = _ollama_chat(payload).strip()
-        goal, pred_team = _extract_prediction(raw, teams)
-        pred = "goal" if goal else "not_goal"
-        pred_team = normalize_team(pred_team, teams) if pred == "goal" else None
+        raw = vlm_generate(clip, prompt, model_name, api_key, temperature=temperature)
+        parsed = aggregate_predictions(parse_model_json(raw, teams), teams)
+        pred = "goal" if parsed.get("goal") else "not_goal"
+        pred_team = normalize_team(parsed.get("team"), teams) if pred == "goal" else None
         return {
             "clip": clip.name,
             "truth": truth,
@@ -234,6 +278,75 @@ def classify_one(clip: Path, prompt: str, teams: list[str],
             "pred": "error",
             "pred_team": None,
             "raw": str(e)[:160],
+        }
+
+
+def classify_one_twostage(
+    clip: Path,
+    goal_template: str,
+    team_templates: list[str],
+    teams: list[str],
+    model_name: str,
+    api_key: str,
+    team_votes: int = 1,
+    team_temperature: float = 0.0,
+) -> dict:
+    truth, truth_team = labels_for(clip.with_suffix(".json"))
+    try:
+        goal_prompt = build_prompt(goal_template, teams)
+        raw_goal = vlm_generate(clip, goal_prompt, model_name, api_key, temperature=0.0)
+        goal_parsed = aggregate_predictions(parse_model_json(raw_goal, teams), teams)
+        is_goal = bool(goal_parsed.get("goal"))
+
+        if not is_goal:
+            return {
+                "clip": clip.name,
+                "truth": truth,
+                "truth_team": truth_team,
+                "pred": "not_goal",
+                "pred_team": None,
+                "raw": raw_goal,
+                "raw_team": None,
+                "mode": "twostage",
+            }
+
+        team_votes_list: list[str | None] = []
+        team_raws: list[str] = []
+        n_calls = max(1, team_votes) * len(team_templates)
+        call_idx = 0
+        for tmpl in team_templates:
+            team_prompt = build_prompt(tmpl, teams)
+            repeats = max(1, team_votes) if len(team_templates) == 1 else 1
+            for r in range(repeats):
+                temp = team_temperature if (n_calls > 1 and call_idx > 0) else 0.0
+                raw_team = vlm_generate(clip, team_prompt, model_name, api_key, temperature=temp)
+                team_parsed = aggregate_predictions(parse_model_json(raw_team, teams), teams)
+                team_votes_list.append(normalize_team(team_parsed.get("team"), teams))
+                team_raws.append(raw_team)
+                call_idx += 1
+
+        pred_team = majority_team(team_votes_list, teams)
+        combined_raw = f"GOAL: {raw_goal}\nTEAM: " + " | ".join(team_raws)
+        return {
+            "clip": clip.name,
+            "truth": truth,
+            "truth_team": truth_team,
+            "pred": "goal",
+            "pred_team": pred_team,
+            "raw": combined_raw,
+            "raw_team": team_raws,
+            "team_votes": team_votes_list,
+            "mode": "twostage",
+        }
+    except Exception as e:
+        return {
+            "clip": clip.name,
+            "truth": truth,
+            "truth_team": truth_team,
+            "pred": "error",
+            "pred_team": None,
+            "raw": str(e)[:200],
+            "mode": "twostage",
         }
 
 
@@ -282,10 +395,30 @@ def score_teams(results: list[dict], teams: list[str]) -> dict:
     }
 
 
-def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
-                     model: str | None = None, workers: int = 8,
-                     limit: int | None = None, verbose: bool = False) -> dict:
-    model = model or os.environ.get("CLASSIFIER_MODEL", OLLAMA_MODEL)
+def classify_dataset(
+    prompt_template: str,
+    dataset: str = "9-8GT-right",
+    model: str | None = None,
+    workers: int = 8,
+    limit: int | None = None,
+    verbose: bool = False,
+    verbose_raw: bool = False,
+    mode: str = "onestage",
+    goal_template: str | None = None,
+    team_templates: list[str] | None = None,
+    team_votes: int = 1,
+    team_temperature: float = 0.0,
+    temperature: float = 0.0,
+) -> dict:
+    api_key = os.environ.get("GEMINI_API_KEY")
+    backend = os.environ.get("CLASSIFIER_BACKEND", "gemini").lower()
+    if backend == "gemini" and not api_key:
+        raise RuntimeError("GEMINI_API_KEY not set (export it or put it in .env)")
+    model = model or os.environ.get("CLASSIFIER_MODEL", "gemini-3.5-flash")
+    if backend in ("qwen", "qwen3"):
+        model = os.environ.get("CLASSIFIER_MODEL", "qwen3-vl:8b")
+    elif backend in ("ollama", "local"):
+        model = os.environ.get("CLASSIFIER_MODEL", "llava-llama3")
     teams = load_teams(dataset)
     prompt = build_prompt(prompt_template, teams)
 
@@ -295,9 +428,34 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
     if not clips:
         raise RuntimeError(f"No clips in {DATA_DIR / dataset}")
 
+    twostage = mode == "twostage"
+    if twostage and not goal_template:
+        goal_template = (ROOT / "prompt_goal.txt").read_text().strip()
+    if twostage and not team_templates:
+        team_templates = [
+            (ROOT / "prompt_team.txt").read_text().strip(),
+            (ROOT / "prompt_team_alt.txt").read_text().strip(),
+        ]
+
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = [ex.submit(classify_one, c, prompt, teams, model, None) for c in clips]
+        if twostage:
+            futs = [
+                ex.submit(
+                    classify_one_twostage,
+                    c,
+                    goal_template,
+                    team_templates,
+                    teams,
+                    model,
+                    api_key,
+                    team_votes,
+                    team_temperature,
+                )
+                for c in clips
+            ]
+        else:
+            futs = [ex.submit(classify_one, c, prompt, teams, model, api_key, temperature) for c in clips]
         for fut in as_completed(futs):
             r = fut.result()
             results.append(r)
@@ -312,6 +470,11 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
                 tt = r.get("truth_team") or "-"
                 pt = r.get("pred_team") or "-"
                 print(f"  {mark} {r['clip']:<36} goal {r['truth']}/{r['pred']}  team {tt}/{pt}")
+                if verbose_raw:
+                    print(f"       raw API response:")
+                    for line in r.get("raw", "").splitlines():
+                        print(f"         {line}")
+                    print()
 
     results.sort(key=lambda r: r["clip"])
     goal_metrics = score_goals(results)
@@ -320,91 +483,194 @@ def classify_dataset(prompt_template: str, dataset: str = "9-8GT-right",
     metrics["model"] = model
     metrics["dataset"] = dataset
     metrics["n_clips"] = len(clips)
+    metrics["mode"] = mode
+    metrics["temperature"] = temperature
+    metrics["backend"] = backend
+    if twostage:
+        metrics["team_votes"] = team_votes
+        metrics["team_temperature"] = team_temperature
+        metrics["team_prompts"] = len(team_templates or [])
     metrics["results"] = results
     return metrics
 
 
+def _run_stats(values: list[float]) -> dict:
+    if not values:
+        return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0}
+    mean = sum(values) / len(values)
+    if len(values) < 2:
+        return {"mean": mean, "std": 0.0, "min": mean, "max": mean}
+    var = sum((v - mean) ** 2 for v in values) / (len(values) - 1)
+    std = var ** 0.5
+    return {"mean": mean, "std": std, "min": min(values), "max": max(values)}
+
+
 def main():
-    p = argparse.ArgumentParser(description="VLM goal + team classifier (local Ollama model)")
+    p = argparse.ArgumentParser(description="VLM goal + team classifier")
     p.add_argument("--dataset", default="9-8GT-right")
     p.add_argument("--prompt", default=str(ROOT / "prompt.txt"))
+    p.add_argument("--mode", choices=("onestage", "twostage"), default="onestage",
+                   help="onestage=one prompt, one call (default); twostage=experimental split")
+    p.add_argument("--prompt-goal", default=str(ROOT / "prompt_goal.txt"))
+    p.add_argument("--prompt-team", default=str(ROOT / "prompt_team.txt"))
+    p.add_argument("--prompt-team-alt", default=str(ROOT / "prompt_team_alt.txt"),
+                   help="Second team prompt for dual-prompt voting in twostage mode")
+    p.add_argument("--team-votes", type=int, default=2,
+                   help="Extra team-stage calls per prompt when only one team prompt (majority vote)")
+    p.add_argument("--team-temperature", type=float, default=0.15,
+                   help="Temperature for team vote calls after the first (0 = all deterministic)")
     p.add_argument("--model", default=None)
-    p.add_argument("--workers", type=int, default=2,
-                     help="Concurrent workers (default 2; keep low for local GPU)")
+    p.add_argument(
+        "--temperature",
+        type=float,
+        default=float(os.environ.get("CLASSIFIER_TEMPERATURE", "0")),
+        help="VLM sampling temperature (0=deterministic). Use 0.1–0.3 to see run variance.",
+    )
+    p.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Repeat full dataset eval N times (reports mean±std when N>1)",
+    )
+    p.add_argument("--workers", type=int, default=None)
     p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--verbose-raw", action="store_true",
+                   help="Print each clip's raw Gemini API response as it completes")
     args = p.parse_args()
 
+    mode = args.mode
+    workers = args.workers
+    backend = os.environ.get("CLASSIFIER_BACKEND", "gemini").lower()
+    if workers is None:
+        workers = 1 if backend in ("ollama", "local", "qwen", "qwen3") else (4 if mode == "twostage" else 8)
     template = Path(args.prompt).read_text().strip()
     teams = load_teams(args.dataset)
     print(f"Dataset: {args.dataset}   Teams: {teams[0]} vs {teams[1]}")
-    print(f"Prompt: {args.prompt}")
-    print(f"Model:  {args.model or os.environ.get('CLASSIFIER_MODEL', OLLAMA_MODEL)}")
-    m = classify_dataset(template, dataset=args.dataset, model=args.model,
-                         workers=args.workers, limit=args.limit, verbose=True)
+    print(f"Mode: {mode}   temperature: {args.temperature}   runs: {args.runs}")
+    print(f"Backend: {backend}")
+    if mode == "twostage":
+        print(f"Goal prompt: {args.prompt_goal}")
+        print(f"Team prompts: {args.prompt_team}, {args.prompt_team_alt}")
+        print(f"Team votes: {args.team_votes}  team_temperature: {args.team_temperature}")
+    else:
+        print(f"Prompt: {args.prompt}")
 
-    print("\n" + "=" * 50)
-    print(f"GOAL DETECTION  model={m['model']}")
-    print("=" * 50)
-    print("                 pred goal   pred not_goal")
-    print(f"  truth goal        {m['tp']:^9}   {m['fn']:^11}")
-    print(f"  truth not_goal    {m['fp']:^9}   {m['tn']:^11}")
-    if m["errors"]:
-        print(f"  (errors: {m['errors']})")
-    print("-" * 50)
-    print(f"  F1       : {m['f1']*100:5.1f}%")
-    print(f"  Accuracy : {m['accuracy']*100:5.1f}%")
+    team_templates = [
+        Path(args.prompt_team).read_text().strip(),
+        Path(args.prompt_team_alt).read_text().strip(),
+    ]
 
-    print("\n" + "=" * 50)
-    print("TEAM ASSIGNMENT (on detected goals)")
-    print("=" * 50)
-    print(f"  Goal clips in dataset     : {m['goal_clips']}")
-    print(f"  Goals detected by VLM   : {m['goals_detected']}")
-    print(f"  Correct team            : {m['team_correct']}")
-    print(f"  Wrong team              : {m['team_wrong']}")
-    print(f"  Team accuracy (detected): {m['team_accuracy_on_detected_goals']*100:.1f}%")
-    print("=" * 50)
+    run_metrics: list[dict] = []
+    for run_i in range(args.runs):
+        if args.runs > 1:
+            print(f"\n--- Run {run_i + 1}/{args.runs} ---")
+        m = classify_dataset(
+            template,
+            dataset=args.dataset,
+            model=args.model,
+            workers=workers,
+            limit=args.limit,
+            verbose=args.verbose_raw or (args.runs == 1),
+            verbose_raw=args.verbose_raw,
+            mode=mode,
+            goal_template=Path(args.prompt_goal).read_text().strip() if mode == "twostage" else None,
+            team_templates=team_templates if mode == "twostage" else None,
+            team_votes=args.team_votes,
+            team_temperature=args.team_temperature,
+            temperature=args.temperature,
+        )
+        run_metrics.append(m)
+        if args.runs > 1:
+            print(
+                f"  run {run_i + 1}: f1={m['f1']:.4f} "
+                f"team_acc={m['team_accuracy_on_detected_goals']:.4f}"
+            )
 
-    save_per_clip_results(m["results"], args.dataset, m["model"], teams)
-    print(f"\nPer-clip results saved under: {RESULTS_DIR / args.dataset}")
-    print(f"SCORE f1={m['f1']:.4f} team_acc={m['team_accuracy_on_detected_goals']:.4f}")
-
-def save_per_clip_results(results: list[dict], dataset: str, model: str, teams: list[str]):
-    """Write/update one JSON per clip, keyed by model name for comparison."""
-    out_dir = RESULTS_DIR / dataset
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for r in results:
-        clip_name = r["clip"]
-        # Strip .mp4 extension for the filename base
-        base = clip_name.rsplit(".", 1)[0]
-        path = out_dir / f"{base}.json"
-
-        if path.exists():
-            data = json.loads(path.read_text())
-        else:
-            data = {
-                "clip": clip_name,
-                "truth": r["truth"],
-                "truth_team": r["truth_team"],
-                "models": {},
-            }
-
-        goal_ok = r["pred"] == r["truth"]
-        team_ok = (
-            r["truth"] != "goal"
-            or r["pred"] != "goal"
-            or normalize_team(r.get("truth_team"), teams)
-            == normalize_team(r.get("pred_team"), teams)
+    m = run_metrics[-1]
+    if args.runs > 1:
+        f1_stats = _run_stats([x["f1"] for x in run_metrics])
+        team_stats = _run_stats([x["team_accuracy_on_detected_goals"] for x in run_metrics])
+        m["run_summaries"] = [
+            {"f1": x["f1"], "team_accuracy_on_detected_goals": x["team_accuracy_on_detected_goals"]}
+            for x in run_metrics
+        ]
+        m["f1_mean"] = round(f1_stats["mean"], 4)
+        m["f1_std"] = round(f1_stats["std"], 4)
+        m["team_acc_mean"] = round(team_stats["mean"], 4)
+        m["team_acc_std"] = round(team_stats["std"], 4)
+        print("\n" + "=" * 50)
+        print(f"VARIANCE over {args.runs} runs (temperature={args.temperature})")
+        print("=" * 50)
+        print(
+            f"  F1:   {f1_stats['mean']*100:.1f}% ± {f1_stats['std']*100:.1f}% "
+            f"(min {f1_stats['min']*100:.1f}% max {f1_stats['max']*100:.1f}%)"
+        )
+        print(
+            f"  Team: {team_stats['mean']*100:.1f}% ± {team_stats['std']*100:.1f}% "
+            f"(min {team_stats['min']*100:.1f}% max {team_stats['max']*100:.1f}%)"
+        )
+        print(
+            f"\nPer-run F1: "
+            + ", ".join(f"{x['f1']*100:.1f}%" for x in run_metrics)
         )
 
-        data["models"][model] = {
-            "pred": r["pred"],
-            "pred_team": r.get("pred_team"),
-            "raw": r.get("raw", ""),
-            "goal_correct": goal_ok,
-            "team_correct": team_ok,
-        }
-        path.write_text(json.dumps(data, indent=2))
+    if args.runs == 1:
+        print("\n" + "=" * 50)
+        print(f"GOAL DETECTION  model={m['model']}")
+        print("=" * 50)
+        print("                 pred goal   pred not_goal")
+        print(f"  truth goal        {m['tp']:^9}   {m['fn']:^11}")
+        print(f"  truth not_goal    {m['fp']:^9}   {m['tn']:^11}")
+        if m["errors"]:
+            print(f"  (errors: {m['errors']})")
+        print("-" * 50)
+        print(f"  F1       : {m['f1']*100:5.1f}%")
+        print(f"  Accuracy : {m['accuracy']*100:5.1f}%")
 
+        print("\n" + "=" * 50)
+        print("TEAM ASSIGNMENT (on detected goals)")
+        print("=" * 50)
+        print(f"  Goal clips in dataset     : {m['goal_clips']}")
+        print(f"  Goals detected by VLM   : {m['goals_detected']}")
+        print(f"  Correct team            : {m['team_correct']}")
+        print(f"  Wrong team              : {m['team_wrong']}")
+        print(f"  Team accuracy (detected): {m['team_accuracy_on_detected_goals']*100:.1f}%")
+        print("=" * 50)
+
+    RESULTS_DIR.mkdir(exist_ok=True)
+    suffix = "_twostage" if m.get("mode") == "twostage" else ""
+    if backend in ("ollama", "local"):
+        from vlm_local import model_slug
+
+        model_file = model_slug(m["model"])
+    else:
+        model_file = m["model"]
+    out = RESULTS_DIR / f"{args.dataset}_{model_file}{suffix}.json"
+    if args.runs > 1:
+        save_doc = {
+            "dataset": m["dataset"],
+            "model": m["model"],
+            "mode": m["mode"],
+            "temperature": args.temperature,
+            "runs": args.runs,
+            "f1_mean": m["f1_mean"],
+            "f1_std": m["f1_std"],
+            "team_acc_mean": m["team_acc_mean"],
+            "team_acc_std": m["team_acc_std"],
+            "run_summaries": m["run_summaries"],
+            "last_run_detail": run_metrics[-1],
+        }
+    else:
+        save_doc = m
+    out.write_text(json.dumps(save_doc, indent=2))
+    print(f"\nSaved: {out}")
+    if args.runs > 1:
+        print(
+            f"SCORE f1={m['f1_mean']:.4f}±{m['f1_std']:.4f} "
+            f"team_acc={m['team_acc_mean']:.4f}±{m['team_acc_std']:.4f}"
+        )
+    else:
+        print(f"SCORE f1={m['f1']:.4f} team_acc={m['team_accuracy_on_detected_goals']:.4f}")
 
 
 if __name__ == "__main__":

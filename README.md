@@ -7,14 +7,26 @@ This repo is the clean experiment loop — built to be optimized with
 ## The loop
 
 ```
-data/<dataset>/*.mp4   (labeled clips: goals + non-goals)
-        │
-        ▼
-   classify.py  ──uses──►  prompt.txt  +  model        ← the two knobs Overmind tunes
-        │
-        ▼
-   results/<dataset>_<model>.json   (confusion matrix + accuracy / precision / recall / F1)
+data/*.mp4  →  classify.py (score)  →  results/*.json
+                    ↑                           │
+                    │         optimize_loop.py  │
+                    │    (edits prompt.txt)     │
+                    └───────────────────────────┘
 ```
+
+**One command** — score, edit prompt, score again (repeat):
+
+```bash
+source .venv/bin/activate
+export $(grep -v '^#' .env | xargs)
+python scripts/optimize_loop.py              # 3 iterations default
+python scripts/optimize_loop.py --iterations 5
+```
+
+Manual eval only (no prompt changes): `python classify.py --dataset 9-8GT-right`
+
+Do **not** use `overmind optimize` for prompt edits with Gemini-only keys (auto-codegen fails).
+Use `optimize_loop.py` or `scripts/gemini_prompt_optimize.py --apply --eval`.
 
 ## Quick start
 
@@ -100,8 +112,12 @@ python3 scripts/export_overmind_dataset.py   # → data/seed.json (34 cases)
 # /overmind-optimize-agent goal-classifier
 ```
 
-Overmind will iterate on `prompt.txt` and `classify.py`, score against `data/seed.json`,
-and save traces + best version under `.overmind/agents/goal-classifier/experiments/`.
+Overmind scores against `data/seed.json` and saves traces under
+`.overmind/agents/goal-classifier/experiments/`.
+
+**Gemini-only:** `overmind optimize` auto-codegen is unreliable (analyzer JSON format).
+Use the hybrid loop in OVERMIND.md — `scripts/gemini_prompt_optimize.py` edits `prompt.txt`
+via Gemini's coding agent, then `classify.py` re-scores.
 
 ## Notes
 

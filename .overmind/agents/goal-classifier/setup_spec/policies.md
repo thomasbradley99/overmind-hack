@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Agent Policy: Agent
 
 ## 1. Domain Knowledge
@@ -51,3 +52,23 @@ The agent uses no external tools beyond local functions: `load_teams`, `build_pr
 - **Traceability**: Provide the raw model output for debugging.  
 - **Consistency**: Enforce the goal‑team correlation rule.  
 - **Performance**: Extract a small number of frames (3) to keep inference fast.
+=======
+# Goal classifier policy
+
+## Purpose
+Detect goals in 5-a-side football clips and identify which team scored.
+
+## Teams
+- Dark sportswear: athletic tracksuits / sportswear
+- Dark suits: jackets, dress shirts, office-style suits
+
+## Decision rules
+1. Goal = ball fully crosses the goal line into the net.
+2. Saves, blocks, post/bar hits, shots wide = NOT goals.
+3. If goal is false, team must be null.
+4. If goal is true, team must be exactly one of the two team names.
+
+## Priority
+1. Correct goal vs not-goal classification
+2. Correct team when goal is true
+>>>>>>> refs/remotes/origin/main

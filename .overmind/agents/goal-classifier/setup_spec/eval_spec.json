@@ -1,0 +1,75 @@
+{
+  "agent_description": "Goal classifier: detect goals in 5-a-side football clips and assign scoring team",
+  "agent_path": "/home/ubuntu/clann/overmind-hack/agent.py",
+  "entrypoint_fn": "run",
+  "input_schema": {
+    "clip_path": {
+      "type": "string",
+      "description": "Path to a 12s MP4 clip (relative to repo root or absolute)"
+    },
+    "dataset": {
+      "type": "string",
+      "description": "Dataset name for team labels (default 9-8GT-right)"
+    }
+  },
+  "output_fields": {
+    "goal": {
+      "type": "boolean",
+      "description": "Whether a goal occurred in the clip",
+      "weight": 48,
+      "importance": "critical"
+    },
+    "team": {
+      "type": "enum",
+      "description": "Scoring team when goal is true; null otherwise",
+      "values": ["Dark suits", "Dark sportswear"],
+      "optional": true,
+      "weight": 32,
+      "importance": "important"
+    }
+  },
+  "structure_weight": 20,
+  "total_points": 100,
+  "tool_config": {
+    "expected_tools": [],
+    "dependencies": [],
+    "param_constraints": {}
+  },
+  "consistency_rules": [],
+  "scope": {
+    "optimizable_paths": ["prompt.txt"],
+    "read_only_paths": [
+      "agent.py",
+      "classify.py",
+      "data/**",
+      "games/**",
+      "scripts/**",
+      "legacy/**",
+      "results/**",
+      "requirements.txt",
+      "README.md"
+    ]
+  },
+  "optimizable_elements": ["prompt.txt"],
+  "fixed_elements": ["agent.py", "classify.py"],
+  "policy": {
+    "purpose": "Detect goals in 5-a-side football clips and identify which team scored.",
+    "domain_rules": [
+      "Goal = ball fully crosses the goal line into the net.",
+      "Saves, blocks, post/bar hits, shots wide are NOT goals.",
+      "If goal is false, team must be null.",
+      "If goal is true, team must be exactly one of the two team names."
+    ],
+    "output_constraints": [
+      "goal is boolean",
+      "team is one of the two team names or null"
+    ],
+    "domain_edge_cases": [
+      "Keeper saves and deflections off the post or bar are not goals.",
+      "Shots that go wide or over the bar are not goals."
+    ],
+    "quality_expectations": [
+      "Prioritize correct goal vs not-goal classification over team assignment."
+    ]
+  }
+}

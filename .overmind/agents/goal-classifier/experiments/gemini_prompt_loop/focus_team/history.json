@@ -1,0 +1,23 @@
+[
+  {
+    "iteration": 1,
+    "focus": "team",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.5625 spurious_team=1",
+    "after": "accuracy=0.9118 f1=0.9143 team_on_goals=0.5625 spurious_team=2",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/focus_team/prompt_iter_001.txt"
+  },
+  {
+    "iteration": 2,
+    "focus": "team",
+    "before": "accuracy=0.9118 f1=0.9143 team_on_goals=0.5625 spurious_team=2",
+    "after": "accuracy=0.9412 f1=0.9412 team_on_goals=0.5000 spurious_team=1",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/focus_team/prompt_iter_002.txt"
+  },
+  {
+    "iteration": 3,
+    "focus": "team",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.5000 spurious_team=1",
+    "after": "accuracy=0.9118 f1=0.9143 team_on_goals=0.6250 spurious_team=2",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/focus_team/prompt_iter_003.txt"
+  }
+]

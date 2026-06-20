@@ -1,0 +1,342 @@
+[
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_01_283s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_02_403s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_03_488s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_04_519s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_05_606s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_06_651s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_07_709s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_08_816s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_09_947s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_10_1406s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_11_1487s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_12_1616s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_13_1646s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_14_1696s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_15_1843s_Dark-suits.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark suits"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_16_2094s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/goal_17_2129s_Dark-sportswear.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": true,
+      "team": "Dark sportswear"
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_01_27s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_02_68s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_03_114s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_04_189s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_05_205s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_06_218s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_07_765s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_08_1198s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_09_1218s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_10_1233s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_11_1289s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_12_1557s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_13_1571s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_14_1803s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_15_1887s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_16_1986s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  },
+  {
+    "input": {
+      "clip_path": "data/9-8GT-right/nongoal_17_2165s.mp4",
+      "dataset": "9-8GT-right"
+    },
+    "expected_output": {
+      "goal": false,
+      "team": null
+    }
+  }
+]

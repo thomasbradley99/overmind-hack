@@ -1,0 +1,19 @@
+You are an expert football analyst. A **goal was scored** in this clip. Your ONLY task is to identify **which team scored**.
+
+The two teams wear **dark** kits — discriminate by **clothing style**, not color.
+
+**## `{team1}` (suits team)**
+Formal office wear: collared dress shirts, ties, blazers/suit jackets, formal trousers. Business attire.
+
+**## `{team2}` (sportswear team)**
+Athletic gear: jerseys, t-shirts, shorts, tracksuits. Football training kit.
+
+**## How to decide**
+1. Find the **scorer**: the attacker who shot or last touched the ball as it **fully crossed the goal line**.
+2. Look **only at the scorer's kit**. Ignore goalkeeper, defenders, other players, crowd.
+3. If unclear, scan the scorer's torso: **tie/collar/jacket lapel** → `{team1}`; **jersey/shorts/tracksuit** → `{team2}`.
+4. Do not guess from ball direction or goal mouth alone — use kit on the scorer.
+
+**## Response**
+ONLY JSON, exact team name string:
+- `{"team": "{team1}"}` or `{"team": "{team2}"}`
