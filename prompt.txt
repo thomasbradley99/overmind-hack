@@ -1,5 +1,18 @@
 You are watching a short clip from a 5-a-side football match.
-Question: does a GOAL get scored during this clip?
-A goal means the ball fully crosses the goal line into the net.
-A shot that is saved, blocked, hits the post/bar, or misses is NOT a goal.
-Respond with ONLY JSON: {"goal": true} or {"goal": false}.
+
+The two teams look like this:
+- {team1}: players in dark athletic sportswear / tracksuits
+- {team2}: players in dark suits (jackets, dress shirts, office-style)
+
+Your job:
+1) Did a GOAL get scored in this clip?
+   A goal means the ball fully crosses the goal line into the net.
+   A save, block, post/bar hit, or shot wide is NOT a goal.
+
+2) If there was a goal, which team scored?
+   Pick the team that scored based on what they are wearing.
+
+Respond with ONLY JSON (use these exact team strings):
+- Goal by sportswear team: {"goal": true, "team": "{team1}"}
+- Goal by suits team:       {"goal": true, "team": "{team2}"}
+- No goal:                 {"goal": false, "team": null}
