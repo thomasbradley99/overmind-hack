@@ -205,6 +205,108 @@ tr.worst{background:rgba(239,68,68,0.1)}
   </div>
 </div>
 
+<!-- NEW: Ensemble Results Section -->
+<div class="card" style="margin-bottom:1.5rem; border:2px solid var(--accent)">
+  <h2>Two-Model Ensemble: Combining Strengths</h2>
+  <div class="subtitle" style="margin-bottom:1rem">
+    smolvlm2 (recall) + moondream (precision/team ID) = better team accuracy without losing recall
+  </div>
+
+  <div class="grid grid-3" style="margin-bottom:1.5rem">
+    <div class="card" style="background:var(--bg)">
+      <h3>smolvlm2-2.2b (Local)</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <div class="metric-grid" style="margin-top:0.5rem">
+          <div class="metric goal"><div class="value">100%</div><div class="label">Recall</div></div>
+          <div class="metric not-goal"><div class="value">55.6%</div><div class="label">Precision</div></div>
+          <div class="metric warning"><div class="value">60%</div><div class="label">Team Acc</div></div>
+        </div>
+        <p style="margin-top:0.5rem">Catches every goal but also hallucinates on non-goals. Team assignment is unreliable.</p>
+      </div>
+    </div>
+    <div class="card" style="background:var(--bg)">
+      <h3>moondream:1.8b (Remote)</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <div class="metric-grid" style="margin-top:0.5rem">
+          <div class="metric goal"><div class="value">20%</div><div class="label">Recall</div></div>
+          <div class="metric accent"><div class="value">100%</div><div class="label">Precision</div></div>
+          <div class="metric accent"><div class="value">100%</div><div class="label">Team Acc</div></div>
+        </div>
+        <p style="margin-top:0.5rem">Only detects when absolutely sure. When it does, team is always correct.</p>
+      </div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,rgba(56,189,248,0.15),rgba(129,140,248,0.1));border:1px solid var(--accent)">
+      <h3 style="color:var(--accent)">OR Ensemble (Best)</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <div class="metric-grid" style="margin-top:0.5rem">
+          <div class="metric goal"><div class="value">100%</div><div class="label">Recall</div></div>
+          <div class="metric not-goal"><div class="value">55.6%</div><div class="label">Precision</div></div>
+          <div class="metric accent"><div class="value" style="color:var(--accent)">80%</div><div class="label">Team Acc</div></div>
+        </div>
+        <p style="margin-top:0.5rem"><strong class="correct">+33% team accuracy</strong> improvement without losing a single goal detection.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Strategy Comparison Table</h3>
+  <div style="overflow-x:auto; margin-bottom:1.5rem">
+    <table id="ensemble-table">
+      <thead>
+        <tr>
+          <th>Strategy</th>
+          <th>F1</th>
+          <th>Precision</th>
+          <th>Recall</th>
+          <th>Accuracy</th>
+          <th>Team Acc</th>
+          <th>TP</th>
+          <th>FP</th>
+          <th>FN</th>
+          <th>TN</th>
+        </tr>
+      </thead>
+      <tbody id="ensemble-table-body"></tbody>
+    </table>
+  </div>
+
+  <h3>How It Works — Per-Clip Breakdown</h3>
+  <div class="subtitle" style="margin-bottom:1rem">OR strategy: if either model says goal, it's a goal. Team from moondream when it detects.</div>
+  <div style="overflow-x:auto">
+    <table id="ensemble-clip-table">
+      <thead>
+        <tr><th>Clip</th><th>Truth</th><th>smolvlm2</th><th>moondream</th><th>Ensemble (OR)</th><th>Team</th><th>Correct</th></tr>
+      </thead>
+      <tbody id="ensemble-clip-body"></tbody>
+    </table>
+  </div>
+
+  <div class="grid grid-2" style="margin-top:1.5rem">
+    <div class="card" style="background:var(--bg)">
+      <h3>Why This Works</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <p><strong>smolvlm2</strong> never misses a goal (100% recall). It is the "safety net."</p>
+        <p><strong>moondream</strong> is selective but precise. When it detects a goal, the team is always correct.</p>
+        <p>The <strong>OR (Union)</strong> strategy means: if <em>either</em> says goal, we trust it. Since smolvlm2 catches everything, recall stays 100%. When moondream also detects, we get its perfect team ID.</p>
+        <p><strong>Trade-off:</strong> We still get 4 false positives (same as smolvlm2 alone), but team accuracy jumps from 60% to 80% because we use moondream's team when both agree.</p>
+      </div>
+    </div>
+    <div class="card" style="background:var(--bg)">
+      <h3>Distributed Architecture</h3>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <p><strong>Laptop A (Local):</strong> smolvlm2-2.2b</p>
+        <p style="margin-left:1rem">- Fast (~1s per clip)</p>
+        <p style="margin-left:1rem">- High recall, catches all goals</p>
+        <p><strong>Laptop B (Remote):</strong> moondream:1.8b</p>
+        <p style="margin-left:1rem">- Precise (~1.3s per clip)</p>
+        <p style="margin-left:1rem">- 100% team accuracy when it detects</p>
+        <p><strong>Connection:</strong> Ollama HTTP API over local network</p>
+        <p style="margin-left:1rem">- Parallel inference, no single-machine bottleneck</p>
+        <p style="margin-left:1rem">- Auto-fallback if remote is offline</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="card" style="margin-bottom:1.5rem">
   <h2>Run Evaluation (Simulated)</h2>
   <div class="subtitle" style="margin-bottom:1rem">Select models and clips to compare</div>

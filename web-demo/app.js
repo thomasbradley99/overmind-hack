@@ -238,8 +238,83 @@ function runEvaluation() {
   }, 800);
 }
 
+// ENSEMBLE RENDERING
+function renderEnsembleTable() {
+  const tbody = document.getElementById('ensemble-table-body');
+  if (!tbody) return;
+  const strategies = ensembleResults.strategies;
+  const names = {
+    "or": "OR (Union) — Best",
+    "and": "AND (Intersection)",
+    "cascade": "Cascade (smolvlm2 → moondream)",
+    "smolvlm2": "smolvlm2 alone (baseline)",
+    "moondream": "moondream alone (baseline)"
+  };
+  
+  Object.entries(strategies).forEach(([key, s]) => {
+    const tr = document.createElement('tr');
+    if (key === ensembleResults.best_strategy) {
+      tr.style.background = 'rgba(56, 189, 248, 0.1)';
+      tr.style.borderLeft = '3px solid var(--accent)';
+    }
+    if (key === 'smolvlm2' || key === 'moondream') {
+      tr.style.opacity = '0.7';
+    }
+    tr.innerHTML = `
+      <td><strong>${names[key]}</strong></td>
+      <td><strong>${pct(s.f1)}</strong></td>
+      <td>${pct(s.precision)}</td>
+      <td>${pct(s.recall)}</td>
+      <td>${pct(s.accuracy)}</td>
+      <td>${pct(s.team_accuracy)}</td>
+      <td>${s.tp}</td>
+      <td>${s.fp}</td>
+      <td>${s.fn}</td>
+      <td>${s.tn}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderEnsembleClipTable() {
+  const tbody = document.getElementById('ensemble-clip-body');
+  if (!tbody) return;
+  
+  const smolvlm2Key = "smolvlm2-2.2b (56px, 23 frames, 2fps)";
+  const moondreamKey = "moondream:1.8b (224px, 1 frame, direct prompt)";
+  
+  data.clips.forEach(c => {
+    const clipData = data.perClipResults[c.name];
+    if (!clipData) return;
+    const s = clipData[smolvlm2Key];
+    const m = clipData[moondreamKey];
+    if (!s || !m) return;
+    
+    // OR ensemble: if either says goal, it's a goal
+    const pred = (s.pred === "goal" || m.pred === "goal") ? "goal" : "not_goal";
+    const team = (m.pred === "goal" && m.team) ? m.team : (s.pred === "goal" && s.team) ? s.team : null;
+    
+    const g_ok = c.truth === pred;
+    const t_ok = c.truth === "goal" && pred === "goal" && team === c.team;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td class="${c.truth === 'goal' ? 'correct' : 'incorrect'}">${c.truth}</td>
+      <td class="${cls(s.goal_correct)}">${s.pred}${s.team ? '<br>' + s.team : ''}</td>
+      <td class="${cls(m.goal_correct)}">${m.pred}${m.team ? '<br>' + m.team : ''}</td>
+      <td class="${cls(g_ok)}"><strong>${pred}</strong>${team ? '<br>' + team : ''}</td>
+      <td class="${t_ok ? 'correct' : pred === 'goal' && c.truth === 'goal' ? 'incorrect' : ''}">${team || '-'}</td>
+      <td class="${cls(g_ok)}">${g_ok ? '✓' : '✗'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 // Initialize
 drawGoalChart();
 drawTeamChart();
+renderEnsembleTable();
+renderEnsembleClipTable();
 // Select first clip by default
 showClip(data.clips[0].name, clipSelector.children[0]);

@@ -144,3 +144,15 @@ const evaluationData = {
     },
   },
 };
+
+const ensembleResults = {
+  strategies: {
+    "or": { f1: 0.714, precision: 0.556, recall: 1.0, accuracy: 0.556, team_accuracy: 0.80, tp: 5, fn: 0, fp: 4, tn: 0, description: "Union: If either model says goal, it's a goal. Best team accuracy improvement." },
+    "and": { f1: 0.333, precision: 1.0, recall: 0.20, accuracy: 0.556, team_accuracy: 1.0, tp: 1, fn: 4, fp: 0, tn: 4, description: "Intersection: Only if both models agree on goal. 100% precision but only 20% recall." },
+    "cascade": { f1: 0.333, precision: 1.0, recall: 0.20, accuracy: 0.556, team_accuracy: 1.0, tp: 1, fn: 4, fp: 0, tn: 4, description: "Cascade: smolvlm2 first, moondream confirms. Same as AND in this case." },
+    "smolvlm2": { f1: 0.714, precision: 0.556, recall: 1.0, accuracy: 0.556, team_accuracy: 0.60, tp: 5, fn: 0, fp: 4, tn: 0, description: "Baseline: smolvlm2-2.2b alone. Always predicts goal." },
+    "moondream": { f1: 0.333, precision: 1.0, recall: 0.20, accuracy: 0.556, team_accuracy: 1.0, tp: 1, fn: 4, fp: 0, tn: 4, description: "Baseline: moondream:1.8b direct prompt. Only detects when very sure." },
+  },
+  best_strategy: "or",
+  rationale: "smolvlm2 already has 100% recall (catches all goals), so OR/Union doesn't hurt recall but improves team accuracy from 60% to 80% by using moondream's team identification when it detects."
+};
