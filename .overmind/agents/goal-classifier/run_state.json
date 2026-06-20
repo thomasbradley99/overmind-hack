@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "agent_name": "goal-classifier",
+  "run_history": [
+    {
+      "run_id": 1,
+      "started_at": 0,
+      "finished_at": 1781957641.3457322,
+      "baseline_score": 77.71428571428571,
+      "final_score": 77.71428571428571,
+      "iterations_completed": 0,
+      "accepted_changes": 0,
+      "rejected_changes": 0
+    },
+    {
+      "run_id": 2,
+      "started_at": 0,
+      "finished_at": 1781958789.562765,
+      "baseline_score": 77.71428571428571,
+      "final_score": 77.71428571428571,
+      "iterations_completed": 0,
+      "accepted_changes": 0,
+      "rejected_changes": 0
+    }
+  ],
+  "failure_registry": {
+    "clusters": {
+      "c9e18588aed0": {
+        "cluster_id": "c9e18588aed0",
+        "root_cause": "Failure in team",
+        "mechanism": "wrong_tool_args",
+        "affected_fields": [
+          "team"
+        ],
+        "exemplar_case_indices": [
+          0,
+          2,
+          4,
+          5,
+          8
+        ],
+        "total_occurrences": 18,
+        "first_seen_iteration": 0,
+        "last_seen_iteration": 0,
+        "resolution_status": "open",
+        "resolved_at_iteration": null,
+        "resolved_by_change": null
+      },
+      "b6f0df4b8a7d": {
+        "cluster_id": "b6f0df4b8a7d",
+        "root_cause": "Failure in goal, team",
+        "mechanism": "wrong_tool_args",
+        "affected_fields": [
+          "goal",
+          "team"
+        ],
+        "exemplar_case_indices": [
+          10,
+          18,
+          27
+        ],
+        "total_occurrences": 6,
+        "first_seen_iteration": 0,
+        "last_seen_iteration": 0,
+        "resolution_status": "open",
+        "resolved_at_iteration": null,
+        "resolved_by_change": null
+      }
+    },
+    "sig_map": {
+      "fail:team|tool_error": "c9e18588aed0",
+      "fail:goal|fail:team|tool_error": "b6f0df4b8a7d"
+    }
+  },
+  "cumulative_failed_attempts": [],
+  "cumulative_successful_changes": [],
+  "regression_cases": [],
+  "component_failure_weights": {
+    "tool_description": 1.0,
+    "agent_logic": 0.0,
+    "format_input": 0.0,
+    "system_prompt": 0.0
+  }
+}

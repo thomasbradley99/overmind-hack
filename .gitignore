@@ -15,3 +15,16 @@ outputs/
 
 # OS
 .DS_Store
+
+# Overmind runtime (large / local)
+.overmind/logs/
+.overmind/agents/**/experiments/traces/
+.overmind/agents/**/experiments/_baseline_items.json
+.overmind/agents/**/experiments/_split.json
+.overmind/agents/**/experiments/skill_state.json
+.overmind/agents/**/instrumented/
+.overmind/agents/**/experiments/agent_working/
+.overmind/agents/**/experiments/iter_*/
+.overmind/agents/**/experiments/best_agent/
+prompt.*.bak
+prompt.txt.bak

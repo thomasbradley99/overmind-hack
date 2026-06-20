@@ -1,91 +1,101 @@
 # Overmind integration
 
-This repo is set up to be optimized with [Overmind](https://github.com/overmind-core/overmind).
+This repo plugs a **Gemini VLM goal classifier** into [Overmind OSS](https://github.com/overmind-core/overmind).
 
-## What Overmind will tune
+## What Overmind is good for here
 
-| Artifact | Role |
-|----------|------|
-| `prompt.txt` | VLM prompt (goal + team: sportswear vs suits) |
-| `classify.py` | Parsing, model config, temperature |
-| `agent.py` | Entrypoint wrapper (usually thin) |
+| Use Overmind for | Works? | Notes |
+|------------------|--------|--------|
+| Register agent + validate one clip | Yes | `overmind agent register` / `validate` |
+| Eval spec + dataset + policies | Yes | `.overmind/agents/goal-classifier/setup_spec/` |
+| **Baseline score** on train clips | Yes | `overmind optimize` Phase 1 or `optimize-step baseline` |
+| Per-case **traces** + failure clusters | Yes | `.overmind/agents/goal-classifier/experiments/traces/` |
+| Dimension scores (goal / team / structure) | Yes | e.g. 77.7/100 baseline |
+| Holdout + rollback gates | Yes | After candidates exist |
+| Cloud dashboard / job telemetry | Yes | `OVERMIND_API_KEY` in `.overmind/.env` |
 
-**Score to improve:** weighted match on `goal` + `team` in eval spec (F1-style aggregate).
+## What does not work well (Gemini-only)
 
-## One-time setup
+| Use Overmind for | Works? | Why |
+|------------------|--------|-----|
+| `overmind optimize` **auto-editing** `prompt.txt` | **No** (reliably) | Analyzer returns long truncated JSON, not `### FILE: prompt.txt` |
+| Gemini as `ANALYZER_MODEL` codegen | **Fragile** | 4k output cap + strict parser |
+| Fast iteration | **Slow** | Each eval case = full video API call |
+| `tool_description` focus | **Mismatch** | No tools; prompt-only agent |
+
+**Claude/GPT as `ANALYZER_MODEL`** fixes auto-codegen for many agents. We only have **Gemini**.
+
+## Recommended hybrid (Gemini-only)
+
+1. **Overmind** — measure and diagnose  
+2. **Gemini coding agent** — edit `prompt.txt` (small steps, not one giant codegen message)  
+3. **`classify.py`** — quick local score  
 
 ```bash
-# install Overmind CLI
-uv tool install overmind
-# or: pipx install overmind
-
 cd overmind-hack
-overmind init                    # API keys → .overmind/.env
+source .venv/bin/activate   # or your env with google-generativeai
 
-# export labeled clips to Overmind dataset format
-python3 scripts/export_overmind_dataset.py --dataset 9-8GT-right
+# Optional: Overmind baseline on train set
+export $(grep -v '^#' .overmind/.env | xargs)
+overmind optimize-step init goal-classifier --overwrite --settings '{"iterations":1,"candidates_per_iteration":1,"holdout_enforcement":false}'
+overmind optimize-step baseline --state .overmind/agents/goal-classifier/experiments/skill_state.json
+
+# Local score + failure list
+python classify.py --dataset 9-8GT-right
+
+# Hybrid: Gemini revises prompt.txt from failures (uses Overmind's coding_agent)
+~/.local/share/uv/tools/overmind/bin/python scripts/gemini_prompt_optimize.py --from-overmind --apply --eval
+
+# Team assignment (edits prompt_team.txt; score with twostage classifier)
+~/.local/share/uv/tools/overmind/bin/python scripts/gemini_prompt_optimize.py \\
+  --focus team --apply --eval --iterations 3 --keep-best \\
+  --classifier-mode twostage
+
+## Two-stage VLM (optional experiment)
+
+`python classify.py --mode twostage` uses `prompt_goal.txt` + team prompts. Default is **onestage** (`prompt.txt` only).
 ```
 
-In Cursor / Claude Code (recommended), run skills in order:
+Or in Cursor: `/overmind-optimize-agent goal-classifier` (Overmind scores; Cursor edits `prompt.txt`).
 
-```text
-/overmind-register-agent agent.py
-/overmind-generate-spec-and-dataset goal-classifier
-/overmind-optimize-agent goal-classifier
-```
-
-Or CLI-style (from repo root):
+## Do not rely on
 
 ```bash
-overmind agent register goal-classifier agent:run
-overmind agent validate goal-classifier --data data/seed.json
-overmind setup goal-classifier --data data/seed.json
-overmind optimize goal-classifier
+overmind optimize goal-classifier --fast   # auto-codegen skips with Gemini analyzer
 ```
+
+Use it only if you add `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` for `ANALYZER_MODEL`.
 
 ## Agent contract
 
-`agent.py` exposes:
+`agent.py` → `run(input_data)`:
 
 ```python
-def run(input_data: dict) -> dict:
-    # input:  { "clip_path": "data/9-8GT-right/goal_01_....mp4", "dataset": "9-8GT-right" }
-    # output: { "goal": true/false, "team": "Dark sportswear" | null, "raw": "..." }
+# input:  { "clip_path": "data/9-8GT-right/goal_01_....mp4", "dataset": "9-8GT-right" }
+# output: { "goal": true/false, "team": "Dark sportswear" | null, "raw": "..." }
 ```
 
-`data/seed.json` rows look like:
+Only **`prompt.txt`** is in optimizable scope (`eval_spec.json`).
 
-```json
-{
-  "input": { "clip_path": "data/9-8GT-right/goal_05_606s_Dark-suits.mp4", "dataset": "9-8GT-right" },
-  "expected_output": { "goal": true, "team": "Dark suits" }
-}
-```
+## Env vars (`.overmind/.env`)
 
-## Policy hints (for policies.md)
+| Var | Role |
+|-----|------|
+| `GEMINI_API_KEY` | Clip classifier (video) + coding-agent prompt edits |
+| `CLASSIFIER_MODEL` | e.g. `gemini-3.5-flash` |
+| `ANALYZER_MODEL` | e.g. `gemini/gemini-2.5-pro` for diagnose / coding agent |
+| `OVERMIND_API_KEY` | Overmind CLI + telemetry (`ovr_...`) |
 
-Suggested rules for the optimizer:
+## Hack narrative
 
-- A goal requires the ball to fully cross the line into the net.
-- Saves, blocks, post hits, and shots wide are **not** goals.
-- Team assignment: sportswear/tracksuits vs suits (both wear dark kits — use clothing style).
-- If `goal` is false, `team` must be null.
+> We plugged a Gemini goal classifier into Overmind OSS. **Evaluation and traces worked** on our clip dataset. **Automatic prompt codegen** (`overmind optimize`) did not with Gemini-as-analyzer. We used **Overmind baseline + `scripts/gemini_prompt_optimize.py`** (Gemini coding agent) to revise `prompt.txt` and re-scored with `classify.py`.
 
-## After optimization
+## Artifacts
 
-Results land in `.overmind/agents/goal-classifier/experiments/`:
-
-- `best_agent.py` — highest-scoring prompt/code version
-- `traces/` — full LLM call traces per test case
-- `report.md` — score history and diffs
-
-Copy winning `prompt.txt` changes back to the repo root when done.
-
-## Env vars
-
-| Var | Used by |
-|-----|---------|
-| `GEMINI_API_KEY` | `agent.py` / `classify.py` (repo `.env`) |
-| Overmind analyzer keys | `.overmind/.env` from `overmind init` |
-
-Both may need the same Gemini key depending on your Overmind provider setup.
+| Path | Content |
+|------|---------|
+| `setup_spec/eval_spec.json` | Scoring weights, optimizable `prompt.txt` only |
+| `setup_spec/dataset.json` | 34 labeled clips |
+| `experiments/traces/baseline/` | Per-case runs |
+| `experiments/results.tsv` | Score history |
+| `results/*_gemini*.json` | Local `classify.py` metrics |

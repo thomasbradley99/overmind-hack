@@ -1,14 +1,9 @@
 """
-Overmind entrypoint for the football goal classifier.
+Overmind entrypoint — one VLM call per clip via prompt.txt.
 
-Overmind calls:
-    run(input_data) -> output dict
-
-One test case = one clip. Input is a clip path (+ dataset name).
-Output matches our eval fields: goal (bool) and team (string or null).
-
-Register with Overmind:
-    overmind agent register goal-classifier agent:run
+Env:
+  CLASSIFIER_BACKEND=gemini | qwen | ollama
+  CLASSIFIER_MODEL=gemini-3.5-flash | qwen3-vl:8b | llava-llama3
 """
 
 from __future__ import annotations
@@ -16,36 +11,13 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from classify import (
-    build_prompt,
-    classify_one,
-    load_teams,
-    normalize_team,
-)
+from classify import build_prompt, classify_one, load_teams, normalize_team
 
 ROOT = Path(__file__).parent
-DEFAULT_PROMPT = ROOT / "prompt.txt"
-
-
-def _load_prompt() -> str:
-    template = DEFAULT_PROMPT.read_text().strip()
-    teams = load_teams("9-8GT-right")
-    return build_prompt(template, teams)
+PROMPT_PATH = ROOT / "prompt.txt"
 
 
 def run(input_data: dict) -> dict:
-    """
-    Classify a single football clip.
-
-    input_data:
-        clip_path: path to .mp4 (relative to repo root or absolute)
-        dataset:   optional, default 9-8GT-right (for team names)
-
-    returns:
-        goal: bool
-        team: str | None  (only when goal is true)
-        raw:  str         (verbatim model response, for traces)
-    """
     clip_path = input_data.get("clip_path") or input_data.get("video_path")
     if not clip_path:
         return {"goal": False, "team": None, "raw": "missing clip_path", "error": "clip_path required"}
@@ -58,15 +30,21 @@ def run(input_data: dict) -> dict:
 
     dataset = input_data.get("dataset", "9-8GT-right")
     teams = load_teams(dataset)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
+    backend = os.environ.get("CLASSIFIER_BACKEND", "gemini").lower()
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if backend == "gemini" and not api_key:
         return {"goal": False, "team": None, "raw": "GEMINI_API_KEY not set", "error": "no api key"}
 
-    model = os.environ.get("CLASSIFIER_MODEL", "gemini-3.5-flash")
-    prompt_template = DEFAULT_PROMPT.read_text().strip()
-    prompt = build_prompt(prompt_template, teams)
-
+    if backend in ("qwen", "qwen3"):
+        default_model = "qwen3-vl:8b"
+    elif backend in ("ollama", "local"):
+        default_model = "llava-llama3"
+    else:
+        default_model = "gemini-3.5-flash"
+    model = os.environ.get("CLASSIFIER_MODEL", default_model)
+    prompt = build_prompt(PROMPT_PATH.read_text().strip(), teams)
     result = classify_one(clip, prompt, teams, model, api_key)
+
     goal = result.get("pred") == "goal"
     team = normalize_team(result.get("pred_team"), teams) if goal else None
 

@@ -1,0 +1,76 @@
+[
+  {
+    "iteration": 1,
+    "before": "accuracy=0.8235 f1=0.8333 team_on_goals=0.3333 spurious_team=4",
+    "after": "accuracy=0.8824 f1=0.8889 team_on_goals=0.625 spurious_team=3",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_001.txt"
+  },
+  {
+    "iteration": 2,
+    "before": "accuracy=0.8824 f1=0.8889 team_on_goals=0.625 spurious_team=3",
+    "after": "accuracy=0.7941 f1=0.8 team_on_goals=0.5714 spurious_team=4",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_002.txt"
+  },
+  {
+    "iteration": 3,
+    "before": "accuracy=0.7941 f1=0.8 team_on_goals=0.5714 spurious_team=4",
+    "after": "accuracy=0.8235 f1=0.8235 team_on_goals=0.5714 spurious_team=3",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_003.txt"
+  },
+  {
+    "iteration": 1,
+    "focus": "both",
+    "before": "accuracy=0.9118 f1=0.9143 team_on_goals=0.6250 spurious_team=2",
+    "after": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_001.txt"
+  },
+  {
+    "iteration": 2,
+    "focus": "both",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "after": "accuracy=0.8529 f1=0.8571 team_on_goals=0.6000 spurious_team=3",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_002.txt"
+  },
+  {
+    "iteration": 3,
+    "focus": "both",
+    "before": "accuracy=0.8529 f1=0.8571 team_on_goals=0.6000 spurious_team=3",
+    "after": "accuracy=0.8529 f1=0.8649 team_on_goals=0.5625 spurious_team=4",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_003.txt"
+  },
+  {
+    "iteration": 1,
+    "focus": "both",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "after": "accuracy=0.8824 f1=0.8889 team_on_goals=0.5000 spurious_team=3",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_001.txt"
+  },
+  {
+    "iteration": 2,
+    "focus": "both",
+    "before": "accuracy=0.8824 f1=0.8889 team_on_goals=0.5000 spurious_team=3",
+    "after": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_002.txt"
+  },
+  {
+    "iteration": 3,
+    "focus": "both",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "after": "accuracy=0.8235 f1=0.8333 team_on_goals=0.7333 spurious_team=4",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_003.txt"
+  },
+  {
+    "iteration": 4,
+    "focus": "both",
+    "before": "accuracy=0.8235 f1=0.8333 team_on_goals=0.7333 spurious_team=4",
+    "after": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_004.txt"
+  },
+  {
+    "iteration": 5,
+    "focus": "both",
+    "before": "accuracy=0.9412 f1=0.9412 team_on_goals=0.6250 spurious_team=1",
+    "after": "accuracy=0.8529 f1=0.8571 team_on_goals=0.6000 spurious_team=3",
+    "prompt": ".overmind/agents/goal-classifier/experiments/gemini_prompt_loop/prompt_iter_005.txt"
+  }
+]

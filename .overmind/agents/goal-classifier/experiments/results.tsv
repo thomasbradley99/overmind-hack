@@ -1,0 +1,7 @@
+iteration	avg_score	avg_structure	avg_goal	avg_team	avg_type_correctness_penalty	avg_consistency_penalty	status	description
+baseline	77.7	16.6	42.9	18.3	0.0	0.0	keep	Initial baseline
+iter_001	77.7	16.6	42.9	18.3	0.0	0.0	skip	No valid candidates
+iter_002	77.7	16.6	42.9	18.3	0.0	0.0	skip	No valid candidates
+iter_003	77.7	16.6	42.9	18.3	0.0	0.0	skip	No valid candidates
+iter_004	77.7	16.6	42.9	18.3	0.0	0.0	skip	No valid candidates
+iter_005	77.7	16.6	42.9	18.3	0.0	0.0	skip	No valid candidates
