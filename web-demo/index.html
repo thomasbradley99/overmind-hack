@@ -291,17 +291,21 @@ tr.worst{background:rgba(239,68,68,0.1)}
       </div>
     </div>
     <div class="card" style="background:var(--bg)">
-      <h3>Distributed Architecture</h3>
+      <h3>exo Distributed Architecture</h3>
       <div style="font-size:0.85rem;color:var(--text2)">
-        <p><strong>Laptop A (Local):</strong> smolvlm2-2.2b</p>
-        <p style="margin-left:1rem">- Fast (~1s per clip)</p>
+        <p><strong>Node A (macOS):</strong> smolvlm2-2.2b</p>
+        <p style="margin-left:1rem">- MLX backend (GPU) ~0.5s per frame</p>
         <p style="margin-left:1rem">- High recall, catches all goals</p>
-        <p><strong>Laptop B (Remote):</strong> moondream:1.8b</p>
-        <p style="margin-left:1rem">- Precise (~1.3s per clip)</p>
-        <p style="margin-left:1rem">- 100% team accuracy when it detects</p>
-        <p><strong>Connection:</strong> Ollama HTTP API over local network</p>
-        <p style="margin-left:1rem">- Parallel inference, no single-machine bottleneck</p>
-        <p style="margin-left:1rem">- Auto-fallback if remote is offline</p>
+        <p><strong>Node B (Linux):</strong> moondream:1.8b</p>
+        <p style="margin-left:1rem">- CPU backend ~1.3s per frame</p>
+        <p style="margin-left:1rem">- 100% precision & team accuracy</p>
+        <p><strong>exo Cluster:</strong> mDNS/libp2p auto-discovery</p>
+        <p style="margin-left:1rem">- Zero config, nodes find each other</p>
+        <p style="margin-left:1rem">- Topology-aware placement</p>
+        <p style="margin-left:1rem">- RDMA over Thunderbolt (macOS 26.2+)</p>
+        <p><strong>API:</strong> OpenAI-compatible /v1/chat/completions</p>
+        <p style="margin-left:1rem">- exo routes requests to correct node</p>
+        <p style="margin-left:1rem">- Parallel inference, max(latency) not sum</p>
       </div>
     </div>
   </div>
@@ -320,6 +324,126 @@ tr.worst{background:rgba(239,68,68,0.1)}
     </div>
     <div style="margin-top:1rem"><h3>Per-Clip</h3><div style="overflow-x:auto"><table id="run-per-clip-table"><thead><tr><th>Clip</th><th>Truth</th></tr></thead><tbody></tbody></table></div></div>
   </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2>exo Setup — Distributed Inference</h2>
+  <div class="subtitle" style="margin-bottom:1rem">Two-machine ensemble using <a href="https://github.com/exo-explore/exo" target="_blank">exo labs</a> cluster</div>
+
+  <div class="grid grid-2" style="margin-bottom:1.5rem">
+    <div class="card" style="background:var(--bg)">
+      <h3>macOS Node (smolvlm2-2.2b)</h3>
+      <div style="font-size:0.8rem;color:var(--text2);font-family:monospace;background:var(--surface);padding:1rem;border-radius:0.5rem;white-space:pre-wrap">
+# 1. Install prerequisites
+brew install uv node
+
+# 2. Install Rust nightly
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup toolchain install nightly
+
+# 3. Clone exo
+git clone https://github.com/exo-explore/exo.git
+cd exo
+
+# 4. Build dashboard
+cd dashboard && npm install && npm run build && cd ..
+
+# 5. Run exo with vision models
+export EXO_ENABLE_IMAGE_MODELS=true
+uv run exo
+      </div>
+      <p style="font-size:0.8rem;color:var(--text2);margin-top:0.5rem">Dashboard: <a href="http://localhost:52415">http://localhost:52415</a></p>
+    </div>
+
+    <div class="card" style="background:var(--bg)">
+      <h3>Linux Node (moondream:1.8b)</h3>
+      <div style="font-size:0.8rem;color:var(--text2);font-family:monospace;background:var(--surface);padding:1rem;border-radius:0.5rem;white-space:pre-wrap">
+# 1. Install dependencies
+curl -LsSf https://astral.sh/uv/install.sh | sh
+sudo apt update && sudo apt install -y nodejs npm
+
+# 2. Install Rust nightly
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup toolchain install nightly
+
+# 3. Clone exo
+git clone https://github.com/exo-explore/exo.git
+cd exo
+
+# 4. Build dashboard
+cd dashboard && npm install && npm run build && cd ..
+
+# 5. Run exo with vision models
+export EXO_ENABLE_IMAGE_MODELS=true
+uv run exo
+      </div>
+      <p style="font-size:0.8rem;color:var(--text2);margin-top:0.5rem">CPU-only on Linux. GPU support in development.</p>
+    </div>
+  </div>
+
+  <h3>Cluster Architecture</h3>
+  <div style="font-family:monospace;font-size:0.75rem;background:var(--bg);padding:1rem;border-radius:0.5rem;color:var(--text2);white-space:pre-wrap;margin-bottom:1rem">
+┌─────────────────────────────────────────────────────────────────┐
+│                    exo Cluster (Auto-Discovery)                  │
+│  ┌──────────────────────┐      ┌──────────────────────────┐     │
+│  │  macOS Node (Node A)  │      │  Linux Node (Node B)     │     │
+│  │  ┌──────────────────┐ │      │  ┌──────────────────────┐│     │
+│  │  │ MLX Backend      │ │      │  │ CPU Backend          ││     │
+│  │  │ (Apple Silicon)  │ │      │  │ (Linux CPU)          ││     │
+│  │  │                  │ │      │  │                      ││     │
+│  │  │ smolvlm2-2.2b    │ │      │  │ moondream:1.8b       ││     │
+│  │  │ ~0.5s/frame      │ │      │  │ ~1.3s/frame          ││     │
+│  │  │ 100% recall      │ │      │  │ 100% precision       ││     │
+│  │  └──────────────────┘ │      │  └──────────────────────┘│     │
+│  │  Auto-discovery      │      │  Auto-discovery          │     │
+│  │  mDNS/libp2p        │◄────►│  mDNS/libp2p            │     │
+│  │  RDMA over TB5      │      │  TCP fallback            │     │
+│  └──────────────────────┘      └──────────────────────────┘     │
+│                                                                   │
+│  API: http://localhost:52415 (any node)                            │
+│  ├─ /v1/chat/completions — OpenAI-compatible                       │
+│  ├─ /models/add — Add custom HuggingFace models                    │
+│  ├─ /instance/previews — Placement optimization                    │
+│  └─ /state — Cluster topology & nodes                              │
+│                                                                   │
+│  Topology-aware placement automatically routes each request        │
+│  to the node where the model runs. Parallel inference =            │
+│  max(latency_A, latency_B) not sum(latency_A, latency_B).          │
+└─────────────────────────────────────────────────────────────────┘
+  </div>
+
+  <h3>Ensemble via exo API</h3>
+  <div style="font-size:0.8rem;color:var(--text2);font-family:monospace;background:var(--surface);padding:1rem;border-radius:0.5rem;white-space:pre-wrap">
+# Add models to the cluster (run on either node)
+curl -X POST http://localhost:52415/models/add \
+  -H 'Content-Type: application/json' \
+  -d '{"model_id": "mlx-community/SmolVLM-Instruct-4bit"}'
+
+curl -X POST http://localhost:52415/models/add \
+  -H 'Content-Type: application/json' \
+  -d '{"model_id": "beshkenadze/moondream3-preview-mlx-4bit"}'
+
+# Run the ensemble script
+python3 run_exo_ensemble.py \
+  --exo-url http://localhost:52415 \
+  --mode or \
+  --clip-dir data/9-8GT-right-quarter
+  </div>
+
+  <h3>Performance Comparison</h3>
+  <div style="overflow-x:auto;margin-bottom:1rem">
+    <table>
+      <thead>
+        <tr><th>Setup</th><th>smolvlm2</th><th>moondream</th><th>Total per clip</th><th>Bottleneck</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Single machine, sequential</td><td>~1.0s</td><td>~1.3s</td><td>~2.3s</td><td>Sequential sum</td></tr>
+        <tr><td>Single machine, threaded</td><td>~1.0s</td><td>~1.3s</td><td>~1.3s</td><td>Max of two, but same CPU</td></tr>
+        <tr><td><strong>exo distributed cluster</strong></td><td><strong>~0.5s (GPU)</strong></td><td><strong>~1.3s (CPU)</strong></td><td><strong>~1.3s</strong></td><td><strong>moondream (parallel)</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p style="font-size:0.85rem;color:var(--text2)">With exo, each model runs on its optimal hardware (smolvlm2 on macOS GPU, moondream on Linux CPU). exo handles request routing and load balancing automatically.</p>
 </div>
 
 <div class="card" style="margin-bottom:2rem">
